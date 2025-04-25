@@ -450,14 +450,15 @@ function showEditModal(event, transactionData) {
 // Add event listener for edit form submission
 document.getElementById('confirmEdit')?.addEventListener('click', async function() {
     const form = document.getElementById('editTransactionForm');
-    const formData = new FormData(form);
-    const data = Object.fromEntries(formData.entries());
     
-    // Check if account is selected
-    if (!data.accountName || data.accountName.trim() === '') {
-        alert('Please select an account before saving changes.');
+    // Use browser's built-in form validation
+    if (!form.checkValidity()) {
+        form.reportValidity();
         return;
     }
+    
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
     
     try {
         const response = await fetch(`/hawala/update/${data.id}`, {
@@ -501,3 +502,119 @@ document.getElementById('confirmEdit')?.addEventListener('click', async function
         alert('Error updating transaction. Please try again.');
     }
 });
+
+// Add the report generation and export functions
+function generateReportData() {
+    const reportTableBody = document.getElementById('reportTableBody');
+    const reportView = document.getElementById('reportView');
+    const reportDate = document.getElementById('reportDate');
+
+    // Clear previous content
+    reportTableBody.innerHTML = '';
+
+    // Set the current date for the report
+    const formattedDate = new Date(currentDate).toLocaleDateString('en-US', {
+        weekday: 'short',
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+    });
+    reportDate.textContent = formattedDate;
+
+    // Filter transactions for the current date
+    const currentDateTransactions = filteredRows.filter(row => {
+        const dateCell = row.querySelector('td[data-date]');
+        const rowDate = new Date(dateCell.getAttribute('data-date'));
+        const rowDateStr = rowDate.toISOString().split('T')[0];
+        const filterDateStr = currentDate;
+        return rowDateStr === filterDateStr && !row.classList.contains('no-transactions');
+    });
+
+    // Add filtered transactions to the report in the specified order
+    currentDateTransactions.forEach(row => {
+        const tr = document.createElement('tr');
+        
+        // 1. Market Name
+        const marketName = row.querySelector('td[data-market]').getAttribute('data-market');
+        tr.insertCell().textContent = marketName;
+
+        // 2. Account Name
+        const accountName = row.cells[2].textContent.trim();
+        tr.insertCell().textContent = accountName;
+
+        // 3. Amount (red if sent, black if received)
+        const amountCell = row.querySelector('td:nth-child(4)').textContent.trim();
+        const typeCell = row.querySelector('.badge');
+        const type = typeCell.textContent.trim().toLowerCase();
+        const amountElement = tr.insertCell();
+
+        // Set the amount text
+        amountElement.textContent = amountCell;
+        
+        // Color the amount red if it's a 'send' transaction
+        if (type === 'send') {
+            amountElement.classList.add('amount-sent');
+        }
+
+        // 4. Date (only month and day)
+        const dateCell = row.querySelector('td[data-date]');
+        const date = new Date(dateCell.getAttribute('data-date'));
+        const dateStr = date.toLocaleDateString('en-US', {
+            month: 'long',
+            day: 'numeric'
+        });
+        tr.insertCell().textContent = dateStr;
+
+        reportTableBody.appendChild(tr);
+    });
+
+    return currentDateTransactions.length > 0;
+}
+
+function printReport() {
+    if (generateReportData()) {
+        const reportView = document.getElementById('reportView');
+        reportView.style.display = 'block';
+        window.print();
+        reportView.style.display = 'none';
+    } else {
+        alert('No transactions found for the selected date.');
+    }
+}
+
+function exportToPDF() {
+    if (generateReportData()) {
+        const reportView = document.getElementById('reportView');
+        const formattedDate = new Date(currentDate).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+        });
+        
+        // Make report view visible before generating PDF
+        reportView.style.display = 'block';
+        
+        // Configure PDF options
+        const options = {
+            margin: 10,
+            filename: `Hawala_Transactions_${formattedDate.replace(/\s/g, '_')}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+        
+        // Generate and download PDF
+        html2pdf()
+            .from(reportView)
+            .set(options)
+            .save()
+            .then(() => {
+                // Hide the report view after generating PDF
+                setTimeout(() => {
+                    reportView.style.display = 'none';
+                }, 100);
+            });
+    } else {
+        alert('No transactions found for the selected date.');
+    }
+}

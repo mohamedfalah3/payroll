@@ -49,7 +49,7 @@
                 </div>
 
                 <div class="transfer-form">
-                    <form id="hawalaForm">
+                    <form id="hawalaForm" novalidate>
                         <div class="row g-4">
                             <div class="col-md-6">
                                 <label class="form-label">Account Name</label>
@@ -71,7 +71,7 @@
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Nusinga</label>
-                                <input type="text" class="form-control" name="nusinga" placeholder="Enter nusinga">
+                                <input type="text" class="form-control" name="nusinga" placeholder="Enter nusinga" required>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Transaction Type</label>
@@ -94,7 +94,7 @@
                             </div>
                             <div class="col-12">
                                 <label class="form-label">Transfer Description</label>
-                                <textarea class="form-control" name="purpose" rows="3" placeholder="Enter purpose of transfer"></textarea>
+                                <textarea class="form-control" name="purpose" rows="3" placeholder="Enter purpose of transfer" required></textarea>
                             </div>
                             <div class="col-12">
                                 <button type="submit" class="btn btn-primary w-100">Process Hawala Transfer</button>

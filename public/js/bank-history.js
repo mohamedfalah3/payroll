@@ -334,31 +334,54 @@ function showEditModal(event, transactionData) {
     event.preventDefault();
     event.stopPropagation();
     
-    const transaction = JSON.parse(transactionData);
-    
-    // Fill the form with current values
-    document.getElementById('editTransactionId').value = transaction.id;
-    document.getElementById('editAmount').value = transaction.amount;
-    document.getElementById('editBankName').value = transaction.bankName;
-    document.getElementById('editAccountName').value = transaction.accountName;
-    document.getElementById('editTransactionType').value = transaction.transactionType;
-    document.getElementById('editDescription').value = transaction.description || '';
-    
-    // Show the modal
-    const modal = new bootstrap.Modal(document.getElementById('editModal'));
-    modal.show();
+    try {
+        // Parse the transaction data
+        const transaction = JSON.parse(transactionData);
+        
+        // Fill the form with current values
+        document.getElementById('editTransactionId').value = transaction.id;
+        document.getElementById('editAmount').value = transaction.amount;
+        document.getElementById('editBankName').value = transaction.bankName;
+
+        // Populate the account dropdown and pre-select the current account
+        const accountDropdown = document.getElementById('editAccountName');
+        accountDropdown.innerHTML = '<option value="">Select account</option>';
+        
+        // Use the global accountsList we defined in the template
+        if (window.accountsList && Array.isArray(window.accountsList)) {
+            window.accountsList.forEach(account => {
+                const option = document.createElement('option');
+                option.value = account;
+                option.text = account;
+                option.selected = (transaction.accountName === account);
+                accountDropdown.appendChild(option);
+            });
+        }
+        
+        document.getElementById('editTransactionType').value = transaction.transactionType;
+        document.getElementById('editDescription').value = transaction.description || '';
+        
+        // Show the modal using Bootstrap 5 syntax
+        const editModal = document.getElementById('editModal');
+        const modal = bootstrap.Modal.getOrCreateInstance(editModal);
+        modal.show();
+    } catch (error) {
+        console.error('Error parsing transaction data:', error, transactionData);
+        alert('Error opening edit modal. Please try again.');
+    }
 }
 
 document.getElementById('confirmEdit')?.addEventListener('click', async function() {
     const form = document.getElementById('editTransactionForm');
-    const formData = new FormData(form);
-    const data = Object.fromEntries(formData.entries());
     
-    // Check if account is selected
-    if (!data.accountName || data.accountName.trim() === '') {
-        alert('Please select an account before saving changes.');
+    // Use browser's built-in form validation
+    if (!form.checkValidity()) {
+        form.reportValidity();
         return;
     }
+    
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
     
     try {
         const response = await fetch(`/bank/update/${data.id}`, {

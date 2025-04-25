@@ -237,7 +237,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <form id="editTransactionForm" method="POST">
+                    <form id="editTransactionForm" method="POST" novalidate>
                         <input type="hidden" id="editTransactionId" name="id">
                         <div class="mb-3">
                             <label for="editAmount" class="form-label">Amount</label>
@@ -276,7 +276,7 @@
                             </div>
                             <div class="mb-3">
                                 <label for="editNusinga" class="form-label">Nusinga</label>
-                                <input type="text" class="form-control" id="editNusinga" name="nusinga" value="<%= transaction.nusinga || '' %>">
+                                <input type="text" class="form-control" id="editNusinga" name="nusinga" value="<%= transaction.nusinga || '' %>" required>
                             </div>
                         <% } %>
                         <div class="mb-3">
@@ -301,7 +301,7 @@
                         </div>
                         <div class="mb-3">
                             <label for="edit<%= transaction.type === 'bank' ? 'Description' : 'Purpose' %>" class="form-label"><%= transaction.type === 'bank' ? 'Description' : 'Purpose' %></label>
-                            <textarea class="form-control" id="edit<%= transaction.type === 'bank' ? 'Description' : 'Purpose' %>" name="<%= transaction.type === 'bank' ? 'description' : 'purpose' %>" rows="3"></textarea>
+                            <textarea class="form-control" id="edit<%= transaction.type === 'bank' ? 'Description' : 'Purpose' %>" name="<%= transaction.type === 'bank' ? 'description' : 'purpose' %>" rows="3" required></textarea>
                         </div>
                     </form>
                 </div>
@@ -317,7 +317,17 @@
         </div>
     </div>
 
+    <!-- Firebase Scripts (loaded conditionally) -->
+    <% if (typeof useFirebase !== 'undefined' && useFirebase) { %>
+    <script type="module" src="/js/firebase-client.js"></script>
+    <script>
+        // Make transaction data available to client script
+        window.transactionData = <%- JSON.stringify(transaction) %>;
+    </script>
+    <% } %>
+    
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
     <script src="/js/transaction-detail.js"></script>
 </body>
 </html>

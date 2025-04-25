@@ -54,30 +54,15 @@ async function handleFormSubmit(e) {
     e.preventDefault();
     
     try {
+        // Use browser's built-in form validation
+        if (!this.checkValidity()) {
+            // If form is invalid, trigger browser validation UI
+            this.reportValidity();
+            return;
+        }
+        
         const formData = new FormData(this);
         const data = Object.fromEntries(formData.entries());
-        
-        // Client-side validation
-        if (!data.market) {
-            alert('Please select a market first');
-            return;
-        }
-        if (!data.accountName) {
-            alert('Please select an account');
-            return;
-        }
-        if (!data.transactionType) {
-            alert('Please select a transaction type');
-            return;
-        }
-        if (!data.amount || isNaN(parseFloat(data.amount))) {
-            alert('Please enter a valid amount');
-            return;
-        }
-        if (!data.currency) {
-            alert('Please select a currency');
-            return;
-        }
         
         const requestData = {
             ...data,

@@ -60,15 +60,46 @@ function showEditModal(event, transactionData) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Check if Firebase client is available
+    const useFirebase = window.FirebaseClient !== undefined;
+    console.log('Firebase client available:', useFirebase);
+
     // Handle confirm status change button click
     document.getElementById('confirmStatusChange')?.addEventListener('click', function() {
         if (currentForm) {
-            currentForm.submit();
+            // If using Firebase, handle status change directly
+            if (useFirebase && window.transactionData) {
+                handleFirebaseStatusChange();
+            } else {
+                currentForm.submit();
+            }
         }
         // Hide the modal
         const modal = bootstrap.Modal.getInstance(document.getElementById('statusChangeModal'));
         modal.hide();
     });
+
+    // Firebase status change handler
+    async function handleFirebaseStatusChange() {
+        try {
+            const transaction = window.transactionData;
+            if (!transaction || !transaction.id) return;
+            
+            const collectionName = transaction.type === 'bank' ? 'bankTransactions' : 'hawalaTransactions';
+            const newStatus = transaction.status === 'pending' ? 'completed' : 'pending';
+            
+            await window.FirebaseClient.updateDocument(collectionName, transaction.id, {
+                status: newStatus,
+                lastModified: new Date().toISOString()
+            });
+            
+            // Reload the page to show the updated status
+            window.location.reload();
+        } catch (error) {
+            console.error('Error updating transaction status:', error);
+            alert('Error updating transaction status. Please try again.');
+        }
+    }
 
     // Handle delete confirmation
     document.getElementById('confirmDelete')?.addEventListener('click', async function() {
@@ -78,6 +109,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const urlPath = window.location.pathname;
             const type = urlPath.split('/')[2]; // ['', 'transaction', 'hawala', 'id']
             
+            // If using Firebase, handle delete directly
+            if (useFirebase) {
+                const collectionName = type === 'hawala' ? 'hawalaTransactions' : 'bankTransactions';
+                await window.FirebaseClient.deleteDocument(collectionName, transactionToDelete);
+                
+                // Redirect back to the history page
+                const returnDate = new URLSearchParams(window.location.search).get('returnDate');
+                window.location.href = `/${type}-history${returnDate ? `?date=${returnDate}` : ''}`;
+                return;
+            }
+            
+            // Standard API delete request
             const response = await fetch(`/${type}/delete/${transactionToDelete}`, {
                 method: 'DELETE'
             });
@@ -98,39 +141,45 @@ document.addEventListener('DOMContentLoaded', () => {
     // Handle edit form submission
     document.getElementById('confirmEdit')?.addEventListener('click', async function() {
         const form = document.getElementById('editTransactionForm');
-        const formData = new FormData(form);
-        const data = Object.fromEntries(formData.entries());
         
-        // Check if account is selected
-        if (!data.accountName || data.accountName.trim() === '') {
-            alert('Please select an account before saving changes.');
+        // Use browser's built-in form validation
+        if (!form.checkValidity()) {
+            form.reportValidity();
             return;
         }
-        
+
+        const formData = new FormData(form);
+        const transactionData = Object.fromEntries(formData.entries());
+
         try {
-            const urlPath = window.location.pathname;
-            const pathSegments = urlPath.split('/');
-            const type = pathSegments[2]; // ['', 'transaction', 'hawala', 'id']
-            const endpoint = type === 'hawala' ? '/hawala' : '/bank';
-            
-            const response = await fetch(`${endpoint}/update/${data.id}`, {
-                method: 'PUT',
+            // If using Firebase, handle edit directly
+            if (useFirebase) {
+                const collectionName = transactionData.type === 'hawala' ? 'hawalaTransactions' : 'bankTransactions';
+                await window.FirebaseClient.updateDocument(collectionName, transactionData.id, transactionData);
+                
+                // Reload the page to show the updated transaction
+                window.location.reload();
+                return;
+            }
+
+            // Standard API edit request
+            const response = await fetch(`/transaction/edit/${transactionData.id}`, {
+                method: 'POST',
+                body: JSON.stringify(transactionData),
                 headers: {
                     'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(data)
+                }
             });
 
             if (response.ok) {
-                // Reload the page to show updated data
+                // Reload the page to show the updated transaction
                 window.location.reload();
             } else {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to update transaction');
+                throw new Error('Failed to edit transaction');
             }
         } catch (error) {
-            console.error('Error updating transaction:', error);
-            alert(error.message || 'Error updating transaction. Please try again.');
+            console.error('Error editing transaction:', error);
+            alert('Error editing transaction. Please try again.');
         }
     });
 
@@ -138,7 +187,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const copyButtons = document.querySelectorAll('.copy-button');
     copyButtons.forEach(button => {
         button.addEventListener('click', async () => {
-            const textToCopy = button.dataset.copyText;
+            const textToCopy = button.getAttribute('data-copy-text');
             try {
                 await navigator.clipboard.writeText(textToCopy);
                 

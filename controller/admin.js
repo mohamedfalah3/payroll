@@ -6,6 +6,13 @@ const Market = require('../model/market');
 const AdminController = require('./adminController');
 const Bank = require('../model/bank');
 const Account = require('../model/account');
+const settings = require('../config/settings'); // Import app settings
+
+// Add Firebase configuration to all responses
+router.use((req, res, next) => {
+    res.locals.useFirebase = settings.useFirebase;
+    next();
+});
 
 router.get('/', (req, res) => {
     res.redirect('/hawala');
@@ -18,10 +25,11 @@ router.get('/hawala', async (req, res) => {
             Market.getMarkets(),
             Account.getAllAccounts()
         ]);
+        
         res.render('hawala', {
             title: 'Hawala Transfer',
-            markets,
-            accounts
+            markets: markets || [],
+            accounts: accounts || []
         });
     } catch (error) {
         console.error('Error fetching markets:', error);
@@ -29,7 +37,7 @@ router.get('/hawala', async (req, res) => {
             title: 'Hawala Transfer',
             markets: [],
             accounts: [],
-            error: 'Error loading data'
+            error: error.message || 'Error loading data'
         });
     }
 });
@@ -40,10 +48,11 @@ router.get('/bank', async (req, res) => {
             Bank.getAllBanks(),
             Account.getAllAccounts()
         ]);
+        
         res.render('bank', {
             title: 'Bank Transfer',
-            banks,
-            accounts
+            banks: banks || [],
+            accounts: accounts || []
         });
     } catch (error) {
         console.error('Error fetching banks:', error);
@@ -51,7 +60,7 @@ router.get('/bank', async (req, res) => {
             title: 'Bank Transfer',
             banks: [],
             accounts: [],
-            error: 'Error loading data'
+            error: error.message || 'Error loading data'
         });
     }
 });
@@ -64,19 +73,24 @@ router.get('/bank-history', async (req, res) => {
             Bank.getAllBanks(),
             Account.getAllAccounts()
         ]);
-        // Get current page from query params
-        const currentPage = parseInt(req.query.page) || 1;
+        
+        // Get current page from query params (with safety)
+        const currentPage = parseInt(req.query?.page) || 1;
+        const rowsPerPage = 10;
+        const totalPages = Math.ceil((transactions?.length || 0) / rowsPerPage);
         
         res.render('bank-history', { 
-            transactions,
-            banks,
-            accounts,
+            transactions: transactions || [],
+            banks: banks || [],
+            accounts: accounts || [],
             currentPage,
+            totalPages,
+            rowsPerPage,
             title: 'Bank Transaction History'
         });
     } catch (error) {
         console.error('Error fetching bank transactions:', error);
-        res.status(500).send('Error fetching bank transactions');
+        res.status(500).send(error.message || 'Error fetching bank transactions');
     }
 });
 
@@ -88,24 +102,28 @@ router.get('/hawala-history', async (req, res) => {
             Account.getAllAccounts()
         ]);
         
-        const totalReceived = transactions
-            .filter(t => t.transactionType === 'receive')
-            .reduce((sum, t) => sum + parseFloat(t.amount), 0);
-        const totalSent = transactions
-            .filter(t => t.transactionType === 'send')
-            .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+        const safeTransactions = transactions || [];
+        
+        // Calculate totals with null safety
+        const totalReceived = safeTransactions
+            .filter(t => t?.transactionType === 'receive')
+            .reduce((sum, t) => sum + parseFloat(t?.amount || 0), 0);
             
-        // Get page from query params
-        const currentPage = parseInt(req.query.page) || 1;
+        const totalSent = safeTransactions
+            .filter(t => t?.transactionType === 'send')
+            .reduce((sum, t) => sum + parseFloat(t?.amount || 0), 0);
+            
+        // Get page from query params (with safety)
+        const currentPage = parseInt(req.query?.page) || 1;
         const rowsPerPage = 10;
-        const totalPages = Math.ceil(transactions.length / rowsPerPage);
+        const totalPages = Math.ceil(safeTransactions.length / rowsPerPage);
             
         res.render('hawala-history', { 
-            transactions,
+            transactions: safeTransactions,
             totalReceived,
             totalSent,
-            markets,
-            accounts,
+            markets: markets || [],
+            accounts: accounts || [],
             currentPage,
             totalPages,
             rowsPerPage,
@@ -113,29 +131,48 @@ router.get('/hawala-history', async (req, res) => {
         });
     } catch (error) {
         console.error('Error fetching hawala data:', error);
-        res.status(500).send('Error fetching hawala data');
+        res.status(500).send(error.message || 'Error fetching hawala data');
     }
 });
 
 // API routes for saving transactions
 router.post('/bank/save', async (req, res) => {
     try {
+        if (!req.body) {
+            return res.status(400).json({ error: 'Request body is missing' });
+        }
+        
         const transaction = await BankTransaction.saveBankTransaction(req.body);
         res.json(transaction);
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Error saving bank transaction' });
+        console.error('Error saving bank transaction:', error);
+        res.status(error.name === 'ValidationError' ? 400 : 500)
+           .json({ error: error.message || 'Error saving bank transaction' });
     }
 });
 
 // Add update route for bank transactions
 router.put('/bank/update/:id', async (req, res) => {
     try {
+        if (!req.params?.id) {
+            return res.status(400).json({ error: 'Transaction ID is required' });
+        }
+        
+        if (!req.body) {
+            return res.status(400).json({ error: 'Request body is missing' });
+        }
+        
         const transaction = await BankTransaction.updateTransaction(req.params.id, req.body);
+        
+        if (!transaction) {
+            return res.status(404).json({ error: 'Transaction not found or update failed' });
+        }
+        
         res.json(transaction);
     } catch (error) {
         console.error('Error updating bank transaction:', error);
-        res.status(500).json({ error: 'Error updating bank transaction' });
+        res.status(error.name === 'ValidationError' ? 400 : 500)
+           .json({ error: error.message || 'Error updating bank transaction' });
     }
 });
 
@@ -149,13 +186,18 @@ router.post('/hawala/save', async (req, res, next) => {
         console.log('Received hawala transaction data:', req.body);
         
         const transaction = await HawalaTransaction.saveHawalaTransaction(req.body);
+        
+        if (!transaction) {
+            return res.status(500).json({ error: 'Failed to save hawala transaction' });
+        }
+        
         res.json(transaction);
     } catch (error) {
         console.error('Error saving hawala transaction:', error);
         if (error.name === 'ValidationError') {
             res.status(400).json({ error: error.message });
         } else {
-            next(error); // Pass to global error handler
+            res.status(500).json({ error: error.message || 'Error saving hawala transaction' });
         }
     }
 });
@@ -163,32 +205,64 @@ router.post('/hawala/save', async (req, res, next) => {
 // Add update route for hawala transactions
 router.put('/hawala/update/:id', async (req, res) => {
     try {
+        if (!req.params?.id) {
+            return res.status(400).json({ error: 'Transaction ID is required' });
+        }
+        
+        if (!req.body) {
+            return res.status(400).json({ error: 'Request body is missing' });
+        }
+        
         const transaction = await HawalaTransaction.updateTransaction(req.params.id, req.body);
+        
+        if (!transaction) {
+            return res.status(404).json({ error: 'Transaction not found or update failed' });
+        }
+        
         res.json(transaction);
     } catch (error) {
         console.error('Error updating hawala transaction:', error);
-        res.status(500).json({ error: 'Error updating hawala transaction' });
+        res.status(error.name === 'ValidationError' ? 400 : 500)
+           .json({ error: error.message || 'Error updating hawala transaction' });
     }
 });
 
 // Confirmation endpoints
 router.post('/bank-history/confirm/:id', async (req, res) => {
     try {
+        if (!req.params?.id) {
+            return res.status(400).json({ error: 'Transaction ID is required' });
+        }
+        
         const transaction = await BankTransaction.toggleTransactionStatus(req.params.id);
+        
+        if (!transaction) {
+            return res.status(404).json({ error: 'Transaction not found or status update failed' });
+        }
+        
         res.json(transaction);
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Error confirming bank transaction' });
+        console.error('Error confirming bank transaction:', error);
+        res.status(500).json({ error: error.message || 'Error confirming bank transaction' });
     }
 });
 
 router.post('/hawala-history/confirm/:id', async (req, res) => {
     try {
+        if (!req.params?.id) {
+            return res.status(400).json({ error: 'Transaction ID is required' });
+        }
+        
         const transaction = await HawalaTransaction.toggleTransactionStatus(req.params.id);
+        
+        if (!transaction) {
+            return res.status(404).json({ error: 'Transaction not found or status update failed' });
+        }
+        
         res.json(transaction);
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Error confirming hawala transaction' });
+        console.error('Error confirming hawala transaction:', error);
+        res.status(500).json({ error: error.message || 'Error confirming hawala transaction' });
     }
 });
 
@@ -215,45 +289,61 @@ router.post('/complete-hawala-transaction/:id', async (req, res) => {
 // Toggle bank transaction status
 router.post('/toggle-bank-status/:id', async (req, res) => {
     try {
+        if (!req.params?.id) {
+            return res.status(400).json({ error: 'Transaction ID is required' });
+        }
+        
         const transaction = await BankTransaction.toggleTransactionStatus(req.params.id);
-        const returnUrl = req.body.returnUrl || '/bank-history';
+        const returnUrl = req.body?.returnUrl || '/bank-history';
         res.redirect(returnUrl);
     } catch (error) {
         console.error('Error toggling bank transaction status:', error);
-        res.status(500).send(error.message);
+        res.status(500).send(error.message || 'Error updating transaction status');
     }
 });
 
 // Toggle hawala transaction status
 router.post('/toggle-hawala-status/:id', async (req, res) => {
     try {
+        if (!req.params?.id) {
+            return res.status(400).json({ error: 'Transaction ID is required' });
+        }
+        
         const transaction = await HawalaTransaction.toggleTransactionStatus(req.params.id);
-        const returnUrl = req.body.returnUrl || '/hawala-history';
+        const returnUrl = req.body?.returnUrl || '/hawala-history';
         res.redirect(returnUrl);
     } catch (error) {
         console.error('Error toggling hawala transaction status:', error);
-        res.status(500).send(error.message);
+        res.status(500).send(error.message || 'Error updating transaction status');
     }
 });
 
 // Delete transactions
 router.delete('/bank/delete/:id', async (req, res) => {
     try {
-        await BankTransaction.deleteTransaction(req.params.id);
+        if (!req.params?.id) {
+            return res.status(400).json({ error: 'Transaction ID is required' });
+        }
+        
+        const result = await BankTransaction.deleteTransaction(req.params.id);
         res.json({ success: true });
     } catch (error) {
         console.error('Error deleting bank transaction:', error);
-        res.status(500).json({ error: 'Error deleting bank transaction' });
+        res.status(500).json({ error: error.message || 'Error deleting bank transaction' });
     }
 });
 
 router.delete('/hawala/delete/:id', async (req, res) => {
     try {
-        await HawalaTransaction.deleteTransaction(req.params.id);
+        if (!req.params?.id) {
+            return res.status(400).json({ error: 'Transaction ID is required' });
+        }
+        
+        const result = await HawalaTransaction.deleteTransaction(req.params.id);
         res.json({ success: true });
     } catch (error) {
         console.error('Error deleting hawala transaction:', error);
-        res.status(500).json({ error: 'Error deleting hawala transaction' });
+        res.status(500).json({ error: error.message || 'Error deleting hawala transaction' });
     }
 });
 
@@ -261,6 +351,11 @@ router.delete('/hawala/delete/:id', async (req, res) => {
 router.get('/transaction/:type/:id', async (req, res) => {
     try {
         const { type, id } = req.params;
+        
+        if (!type || !id) {
+            return res.status(400).send('Transaction type and ID are required');
+        }
+        
         let transaction;
         let banks = [];
         let markets = [];
@@ -292,16 +387,16 @@ router.get('/transaction/:type/:id', async (req, res) => {
         
         res.render('transaction-details', {
             transaction,
-            banks,
-            markets,
-            accounts,
+            banks: banks || [],
+            markets: markets || [],
+            accounts: accounts || [],
             title: 'Transaction Details',
-            originalUrl: req.originalUrl,
+            originalUrl: req.originalUrl || '',
             req: req
         });
     } catch (error) {
         console.error('Error fetching transaction details:', error);
-        res.status(500).send('Error fetching transaction details');
+        res.status(500).send(error.message || 'Error fetching transaction details');
     }
 });
 
@@ -309,16 +404,17 @@ router.get('/transaction/:type/:id', async (req, res) => {
 router.get('/add-market', async (req, res) => {
     try {
         const markets = await Market.getMarkets();
+        
         res.render('add-market', { 
-            markets,
-            error: null,
+            markets: markets || [],
+            error: req.query?.error || null,
             title: 'Add Market'
         });
     } catch (error) {
         console.error('Error loading add market page:', error);
         res.render('add-market', { 
             markets: [],
-            error: 'Error loading markets',
+            error: error.message || 'Error loading markets',
             title: 'Add Market'
         });
     }
@@ -326,15 +422,26 @@ router.get('/add-market', async (req, res) => {
 
 router.post('/add-market', async (req, res) => {
     try {
-        const { marketName } = req.body;
-        await Market.addMarket(marketName);
+        const { marketName } = req.body || {};
+        
+        if (!marketName) {
+            return res.render('add-market', {
+                markets: await Market.getMarkets(),
+                error: 'Market name is required',
+                title: 'Add Market'
+            });
+        }
+        
+        const result = await Market.addMarket(marketName);
         res.redirect('/add-market');
     } catch (error) {
         console.error('Error adding market:', error);
-        const markets = await Market.getMarkets();
+        const markets = await Market.getMarkets() || [];
+        
         res.render('add-market', { 
             markets,
-            error: error.message || 'Error adding market'
+            error: error.message || 'Error adding market',
+            title: 'Add Market'
         });
     }
 });
@@ -343,10 +450,10 @@ router.post('/add-market', async (req, res) => {
 router.get('/api/markets', async (req, res) => {
     try {
         const markets = await Market.getMarkets();
-        res.json(markets);
+        res.json(markets || []);
     } catch (error) {
         console.error('Error fetching markets:', error);
-        res.status(500).json({ error: 'Error fetching markets' });
+        res.status(500).json({ error: error.message || 'Error fetching markets' });
     }
 });
 
@@ -368,16 +475,18 @@ router.get('/markets', async (req, res) => {
 router.get('/add-bank', async (req, res) => {
     try {
         const banks = await Bank.getAllBanks();
+        
         res.render('add-bank', { 
-            banks,
-            error: null,
+            banks: banks || [],
+            error: req.query?.error || null,
             title: 'Add Bank'
         });
     } catch (error) {
         console.error('Error loading add bank page:', error);
+        
         res.render('add-bank', { 
             banks: [],
-            error: 'Error loading banks',
+            error: error.message || 'Error loading banks',
             title: 'Add Bank'
         });
     }
@@ -385,20 +494,32 @@ router.get('/add-bank', async (req, res) => {
 
 router.post('/add-bank', async (req, res) => {
     try {
-        const { bankName } = req.body;
-        const result = await Bank.addBank(bankName);
-        if (!result.success) {
-            const banks = await Bank.getAllBanks();
-            return res.render('add-bank', { 
-                banks,
-                error: result.message,
+        const { bankName } = req.body || {};
+        
+        if (!bankName) {
+            return res.render('add-bank', {
+                banks: await Bank.getAllBanks() || [],
+                error: 'Bank name is required',
                 title: 'Add Bank'
             });
         }
+        
+        const result = await Bank.addBank(bankName);
+        
+        if (!result || !result.success) {
+            const banks = await Bank.getAllBanks() || [];
+            return res.render('add-bank', { 
+                banks,
+                error: result?.message || 'Failed to add bank',
+                title: 'Add Bank'
+            });
+        }
+        
         res.redirect('/add-bank');
     } catch (error) {
         console.error('Error adding bank:', error);
-        const banks = await Bank.getAllBanks();
+        const banks = await Bank.getAllBanks() || [];
+        
         res.render('add-bank', { 
             banks,
             error: error.message || 'Error adding bank',
@@ -411,10 +532,10 @@ router.post('/add-bank', async (req, res) => {
 router.get('/api/banks', async (req, res) => {
     try {
         const banks = await Bank.getAllBanks();
-        res.json(banks);
+        res.json(banks || []);
     } catch (error) {
         console.error('Error fetching banks:', error);
-        res.status(500).json({ error: 'Error fetching banks' });
+        res.status(500).json({ error: error.message || 'Error fetching banks' });
     }
 });
 
@@ -422,16 +543,18 @@ router.get('/api/banks', async (req, res) => {
 router.get('/add-account', async (req, res) => {
     try {
         const accounts = await Account.getAllAccounts();
+        
         res.render('add-account', { 
-            accounts,
-            error: null,
+            accounts: accounts || [],
+            error: req.query?.error || null,
             title: 'Add Account'
         });
     } catch (error) {
         console.error('Error loading add account page:', error);
+        
         res.render('add-account', { 
             accounts: [],
-            error: 'Error loading accounts',
+            error: error.message || 'Error loading accounts',
             title: 'Add Account'
         });
     }
@@ -439,20 +562,33 @@ router.get('/add-account', async (req, res) => {
 
 router.post('/add-account', async (req, res) => {
     try {
-        const { accountName } = req.body;
-        const result = await Account.addAccount(accountName);
-        if (!result.success) {
-            const accounts = await Account.getAllAccounts();
-            return res.render('add-account', { 
-                accounts,
-                error: result.message,
+        const { accountName } = req.body || {};
+        
+        if (!accountName) {
+            return res.render('add-account', {
+                accounts: await Account.getAllAccounts() || [],
+                error: 'Account name is required',
                 title: 'Add Account'
             });
         }
-        res.redirect('/bank');  // Changed from /add-account to /bank
+        
+        const result = await Account.addAccount(accountName);
+        
+        if (!result || !result.success) {
+            const accounts = await Account.getAllAccounts() || [];
+            
+            return res.render('add-account', { 
+                accounts,
+                error: result?.message || 'Failed to add account',
+                title: 'Add Account'
+            });
+        }
+        
+        res.redirect('/bank');
     } catch (error) {
         console.error('Error adding account:', error);
-        const accounts = await Account.getAllAccounts();
+        const accounts = await Account.getAllAccounts() || [];
+        
         res.render('add-account', { 
             accounts,
             error: error.message || 'Error adding account',
@@ -465,10 +601,10 @@ router.post('/add-account', async (req, res) => {
 router.get('/api/accounts', async (req, res) => {
     try {
         const accounts = await Account.getAllAccounts();
-        res.json(accounts);
+        res.json(accounts || []);
     } catch (error) {
         console.error('Error fetching accounts:', error);
-        res.status(500).json({ error: 'Error fetching accounts' });
+        res.status(500).json({ error: error.message || 'Error fetching accounts' });
     }
 });
 

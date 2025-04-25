@@ -1,0 +1,191 @@
+:root {
+    --primary-color: #2563eb;
+    --secondary-color: #1e40af;
+    --background-color: #f1f5f9;
+    --text-color: #1e293b;
+}
+
+body {
+    background-color: var(--background-color);
+    color: var(--text-color);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+.sidebar {
+    height: 100vh;
+    background: linear-gradient(145deg, var(--primary-color), var(--secondary-color));
+    padding-top: 2rem;
+    position: fixed;
+    left: 0;
+    z-index: 1000;
+    width: 250px;
+}
+
+.sidebar h3 {
+    color: white;
+    font-size: 1.25rem;
+    padding: 0 1.5rem;
+    margin-bottom: 2rem;
+    font-weight: 500;
+}
+
+.sidebar a {
+    color: rgba(255, 255, 255, 0.9);
+    text-decoration: none;
+    padding: 0.75rem 1.5rem;
+    display: block;
+    transition: all 0.3s ease;
+    border-radius: 0 25px 25px 0;
+    margin: 0.5rem 0;
+}
+
+.sidebar a:hover, .sidebar a.active {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+    transform: translateX(10px);
+}
+
+.main-content {
+    margin-left: 250px;
+    padding: 2rem;
+    max-width: 1200px;
+}
+
+.form-container {
+    background: white;
+    padding: 2rem;
+    border-radius: 16px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.markets-list {
+    background: white;
+    padding: 2rem;
+    border-radius: 16px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    margin-top: 2rem;
+    max-width: 800px;
+    margin: 2rem auto 0;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: #475569;
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.8rem 1.2rem;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    outline: none;
+}
+
+.btn-submit {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 0.8rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    font-weight: 500;
+    width: 100%;
+    margin-top: 1rem;
+    box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+    transition: all 0.3s ease;
+}
+
+.btn-submit:hover {
+    background-color: var(--secondary-color);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(37, 99, 235, 0.25);
+}
+
+.market-list-item {
+    padding: 1rem;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    transition: all 0.2s ease;
+}
+
+.market-list-item:last-child {
+    border-bottom: none;
+}
+
+.market-list-item:hover {
+    background-color: rgba(37, 99, 235, 0.05);
+}
+
+.market-icon {
+    color: var(--primary-color);
+    margin-right: 1rem;
+    font-size: 1.25rem;
+}
+
+/* Responsive styles */
+@media (max-width: 992px) {
+    .sidebar {
+        width: 100%;
+        height: auto;
+        min-height: unset;
+        position: relative;
+        padding: 1rem;
+        top: 0;
+    }
+
+    .sidebar h3 {
+        text-align: center;
+        margin-bottom: 1rem;
+    }
+
+    .sidebar nav {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .sidebar a {
+        padding: 0.5rem 1rem;
+        margin: 0;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .main-content {
+        margin-left: 0;
+        padding: 1rem;
+        max-width: 100%;
+    }
+
+    .form-container {
+        margin: 1rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .sidebar nav {
+        flex-direction: column;
+    }
+
+    .form-container {
+        margin: 1rem;
+        padding: 1.5rem;
+    }
+    
+    .markets-list {
+        margin: 1rem;
+    }
+}

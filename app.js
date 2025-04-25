@@ -5,6 +5,8 @@ const bodyParser = require('body-parser');
 const session = require('express-session');
 const flash = require('connect-flash');
 const adminRoutes = require('./controller/admin');
+// Import Firebase configuration
+const firebase = require('./config/firebase');
 
 app.set('view engine', 'ejs');
 app.set('views', 'views');
@@ -37,6 +39,12 @@ app.use(bodyParser.urlencoded({
 
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Make Firebase services available to all routes
+app.use((req, res, next) => {
+    req.firebase = firebase;
+    next();
+});
+
 // Admin routes
 app.use('/', adminRoutes);
 
@@ -55,4 +63,5 @@ app.use((err, req, res, next) => {
 
 app.listen(3000, () => {
     console.log('Server is running on port 3000');
+    console.log('Firebase initialized successfully');
 });

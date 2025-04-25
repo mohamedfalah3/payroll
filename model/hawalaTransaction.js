@@ -5,36 +5,27 @@ class HawalaTransaction extends BaseModel {
     static filename = 'hawalaTransactions.json';
 
     static async getHawalaTransactions() {
-        const transactions = await this.readJsonFile(this.filename);
-        return transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+        try {
+            const transactions = await this.getData(this.filename) || [];
+            return transactions.sort((a, b) => {
+                const dateA = a?.date ? new Date(a.date) : new Date(0);
+                const dateB = b?.date ? new Date(b.date) : new Date(0);
+                return dateB - dateA;
+            });
+        } catch (error) {
+            console.error('Error getting hawala transactions:', error);
+            return [];
+        }
     }
 
     static async saveHawalaTransaction(transactionData) {
         try {
-            // Validate all required fields
-            if (!transactionData.accountName?.trim()) {
-                throw new ValidationError('Account name is required');
+            if (!transactionData) {
+                throw new ValidationError('Transaction data is required');
             }
-            if (!transactionData.market?.trim()) {
-                throw new ValidationError('Market is required');
-            }
-            if (!transactionData.transactionType?.trim()) {
-                throw new ValidationError('Transaction type is required');
-            }
-            if (!['send', 'receive'].includes(transactionData.transactionType)) {
-                throw new ValidationError('Invalid transaction type');
-            }
-            if (!transactionData.amount || isNaN(parseFloat(transactionData.amount))) {
-                throw new ValidationError('Invalid amount');
-            }
-            if (!transactionData.currency) {
-                throw new ValidationError('Currency is required');
-            }
-            if (!['USD', 'EUR', 'IQD'].includes(transactionData.currency)) {
-                throw new ValidationError('Invalid currency');
-            }
+            
+            this.validateHawalaTransaction(transactionData);
 
-            const transactions = await this.getHawalaTransactions();
             const newTransaction = {
                 id: uuidv4(),
                 date: new Date().toISOString(),
@@ -48,8 +39,16 @@ class HawalaTransaction extends BaseModel {
                 nusinga: (transactionData.nusinga || '').trim()
             };
 
-            transactions.push(newTransaction);
-            await this.writeJsonFile(this.filename, transactions);
+            if (this.useFirebase) {
+                // Add directly to Firebase
+                await this.addFirebaseDoc(this.getCollectionName(this.filename), newTransaction);
+            } else {
+                // Add to local JSON file
+                const transactions = await this.getHawalaTransactions();
+                transactions.push(newTransaction);
+                await this.writeJsonFile(this.filename, transactions);
+            }
+            
             return newTransaction;
         } catch (error) {
             console.error('Error saving hawala transaction:', error);
@@ -61,6 +60,10 @@ class HawalaTransaction extends BaseModel {
     }
 
     static validateHawalaTransaction(transaction) {
+        if (!transaction) {
+            throw new ValidationError('Transaction data is required');
+        }
+        
         if (!transaction.accountName?.trim()) {
             throw new ValidationError('Account name is required');
         }
@@ -86,19 +89,45 @@ class HawalaTransaction extends BaseModel {
 
     static async toggleTransactionStatus(id) {
         try {
-            const transactions = await this.getHawalaTransactions();
-            const transaction = transactions.find(t => t.id === id);
-            
-            if (!transaction) {
-                throw new ValidationError('Transaction not found');
+            if (!id) {
+                throw new ValidationError('Transaction ID is required');
             }
+            
+            if (this.useFirebase) {
+                // Get the specific transaction from Firebase
+                const collectionName = this.getCollectionName(this.filename);
+                const transaction = await this.getFirebaseDocById(collectionName, id);
+                
+                if (!transaction) {
+                    throw new ValidationError('Transaction not found');
+                }
 
-            // Toggle the status and normalize it
-            transaction.status = transaction.status.toLowerCase() === 'pending' ? 'completed' : 'pending';
-            transaction.lastModified = new Date().toISOString();
+                // Toggle the status
+                const status = transaction.status?.toLowerCase() === 'pending' ? 'completed' : 'pending';
+                const updatedData = {
+                    status,
+                    lastModified: new Date().toISOString()
+                };
+                
+                // Update in Firebase
+                await this.updateFirebaseDoc(collectionName, id, updatedData);
+                return { ...transaction, ...updatedData };
+            } else {
+                // Local JSON file approach
+                const transactions = await this.getHawalaTransactions();
+                const transaction = transactions.find(t => t?.id === id);
+                
+                if (!transaction) {
+                    throw new ValidationError('Transaction not found');
+                }
 
-            await this.writeJsonFile(this.filename, transactions);
-            return transaction;
+                // Toggle the status and normalize it
+                transaction.status = transaction.status?.toLowerCase() === 'pending' ? 'completed' : 'pending';
+                transaction.lastModified = new Date().toISOString();
+
+                await this.writeJsonFile(this.filename, transactions);
+                return transaction;
+            }
         } catch (error) {
             console.error('Error toggling hawala transaction status:', error);
             if (error instanceof ValidationError) {
@@ -110,14 +139,31 @@ class HawalaTransaction extends BaseModel {
 
     static async getTransactionById(id) {
         try {
-            const transactions = await this.getHawalaTransactions();
-            const transaction = transactions.find(t => t.id === id);
-            
-            if (!transaction) {
-                throw new ValidationError('Transaction not found');
+            if (!id) {
+                throw new ValidationError('Transaction ID is required');
             }
+            
+            if (this.useFirebase) {
+                const transaction = await this.getFirebaseDocById(
+                    this.getCollectionName(this.filename),
+                    id
+                );
+                
+                if (!transaction) {
+                    throw new ValidationError('Transaction not found');
+                }
+                
+                return transaction;
+            } else {
+                const transactions = await this.getHawalaTransactions();
+                const transaction = transactions.find(t => t?.id === id);
+                
+                if (!transaction) {
+                    throw new ValidationError('Transaction not found');
+                }
 
-            return transaction;
+                return transaction;
+            }
         } catch (error) {
             console.error('Error getting hawala transaction:', error);
             if (error instanceof ValidationError) {
@@ -129,38 +175,14 @@ class HawalaTransaction extends BaseModel {
 
     static async updateTransaction(id, transactionData) {
         try {
-            const transactions = await this.getHawalaTransactions();
-            const transaction = transactions.find(t => t.id === id);
+            if (!id || !transactionData) {
+                throw new ValidationError('Transaction ID and data are required');
+            }
             
-            if (!transaction) {
-                throw new ValidationError('Transaction not found');
-            }
-
-            // Validate all required fields
-            if (!transactionData.accountName?.trim()) {
-                throw new ValidationError('Account name is required');
-            }
-            if (!transactionData.market?.trim()) {
-                throw new ValidationError('Market is required');
-            }
-            if (!transactionData.transactionType?.trim()) {
-                throw new ValidationError('Transaction type is required');
-            }
-            if (!['send', 'receive'].includes(transactionData.transactionType)) {
-                throw new ValidationError('Invalid transaction type');
-            }
-            if (!transactionData.amount || isNaN(parseFloat(transactionData.amount))) {
-                throw new ValidationError('Invalid amount');
-            }
-            if (!transactionData.currency) {
-                throw new ValidationError('Currency is required');
-            }
-            if (!['USD', 'EUR', 'IQD'].includes(transactionData.currency)) {
-                throw new ValidationError('Invalid currency');
-            }
-
-            // Update the transaction
-            Object.assign(transaction, {
+            // Validate transaction data
+            this.validateHawalaTransaction(transactionData);
+            
+            const updatedData = {
                 accountName: transactionData.accountName.trim(),
                 market: transactionData.market.trim(),
                 transactionType: transactionData.transactionType,
@@ -169,10 +191,30 @@ class HawalaTransaction extends BaseModel {
                 purpose: (transactionData.purpose || '').trim(),
                 nusinga: (transactionData.nusinga || '').trim(),
                 lastModified: new Date().toISOString()
-            });
+            };
 
-            await this.writeJsonFile(this.filename, transactions);
-            return transaction;
+            if (this.useFirebase) {
+                // Update directly in Firebase
+                const collectionName = this.getCollectionName(this.filename);
+                await this.updateFirebaseDoc(collectionName, id, updatedData);
+                
+                // Return the updated document
+                return await this.getFirebaseDocById(collectionName, id);
+            } else {
+                // Update in local JSON file
+                const transactions = await this.getHawalaTransactions();
+                const transaction = transactions.find(t => t?.id === id);
+                
+                if (!transaction) {
+                    throw new ValidationError('Transaction not found');
+                }
+
+                // Update the transaction
+                Object.assign(transaction, updatedData);
+                await this.writeJsonFile(this.filename, transactions);
+                
+                return transaction;
+            }
         } catch (error) {
             console.error('Error updating hawala transaction:', error);
             if (error instanceof ValidationError) {
@@ -184,7 +226,12 @@ class HawalaTransaction extends BaseModel {
 
     static async deleteTransaction(id) {
         try {
+            if (!id) {
+                throw new ValidationError('Transaction ID is required');
+            }
+            
             await this.deleteById(this.filename, id);
+            return true;
         } catch (error) {
             console.error('Error deleting hawala transaction:', error);
             throw error;

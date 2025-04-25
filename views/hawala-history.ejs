@@ -8,6 +8,65 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" href="/css/hawala-history.css">
+    <style>
+        @media print {
+            .sidebar, .date-filter, .btn-group, .pagination, .modal, .clear-btn, .no-print, .transaction-summary {
+                display: none !important;
+            }
+            .main-content {
+                margin-left: 0 !important;
+                width: 100% !important;
+                padding: 20px !important;
+            }
+            #reportView {
+                display: block !important;
+                margin: 0 auto;
+                width: 100%;
+                max-width: 800px;
+            }
+            .table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-bottom: 1rem;
+            }
+            .table th,
+            .table td {
+                padding: 12px;
+                border: 1px solid #000;
+                text-align: left;
+            }
+            .table th {
+                background-color: #f8f9fa !important;
+                -webkit-print-color-adjust: exact;
+            }
+            .report-date {
+                margin-bottom: 30px !important;
+            }
+            @page {
+                margin: 0.5in;
+            }
+            body {
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            h1:not(#reportView h1) {
+                display: none !important;
+            }
+            .history-container:not(#reportView .history-container) {
+                display: none !important;
+            }
+            .amount-sent {
+                color: #dc3545 !important;
+                -webkit-print-color-adjust: exact;
+            }
+        }
+        #reportView {
+            display: none;
+        }
+        .amount-sent {
+            color: #dc3545;
+        }
+    </style>
 </head>
 <body>
     <div class="container-fluid">
@@ -27,6 +86,15 @@
             <!-- Main Content -->
             <div class="col main-content">
                 <h1 class="mb-4">Hawala Transaction History</h1>
+
+                <div class="mb-3 no-print">
+                    <button class="btn btn-primary me-2" onclick="printReport()">
+                        <i class="bi bi-printer"></i> Print Report
+                    </button>
+                    <button class="btn btn-success me-2" onclick="exportToPDF()">
+                        <i class="bi bi-file-earmark-pdf"></i> Export to PDF
+                    </button>
+                </div>
 
                 <div class="date-filter">
                     <div class="text-center d-flex justify-content-center w-100">
@@ -197,6 +265,27 @@
                         </ul>
                     </nav>
                 </div>
+
+                <!-- Report View for Printing/PDF Export -->
+                <div id="reportView">
+                    <h2 class="text-center mb-4">Hawala Transaction Report</h2>
+                    <p class="report-date text-center mb-4">
+                        Date: <span id="reportDate"></span>
+                    </p>
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th style="width: 20%;">Market Name</th>
+                                <th style="width: 20%;">Account Name</th>
+                                <th>Amount</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reportTableBody">
+                            <!-- Report data will be populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
@@ -268,7 +357,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <form id="editTransactionForm" method="POST">
+                    <form id="editTransactionForm" method="POST" novalidate>
                         <input type="hidden" id="editTransactionId" name="id">
                         <div class="mb-3">
                             <label for="editAmount" class="form-label">Amount</label>
@@ -303,7 +392,7 @@
                         </div>
                         <div class="mb-3">
                             <label for="editNusinga" class="form-label">Nusinga</label>
-                            <input type="text" class="form-control" id="editNusinga" name="nusinga" placeholder="Enter nusinga">
+                            <input type="text" class="form-control" id="editNusinga" name="nusinga" placeholder="Enter nusinga" required>
                         </div>
                         <div class="mb-3">
                             <label for="editTransactionType" class="form-label">Transaction Type</label>
@@ -314,7 +403,7 @@
                         </div>
                         <div class="mb-3">
                             <label for="editPurpose" class="form-label">Purpose</label>
-                            <textarea class="form-control" id="editPurpose" name="purpose" rows="3"></textarea>
+                            <textarea class="form-control" id="editPurpose" name="purpose" rows="3" required></textarea>
                         </div>
                     </form>
                 </div>
@@ -332,6 +421,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="/js/hawala-history.js"></script>
 </body>
 </html>

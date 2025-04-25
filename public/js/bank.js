@@ -57,7 +57,7 @@ async function handleFormSubmit(e) {
         const formData = new FormData(this);
         const data = Object.fromEntries(formData.entries());
         
-        const response = await fetch('/bank/transfer', {
+        const response = await fetch('/bank/save', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -66,7 +66,13 @@ async function handleFormSubmit(e) {
         });
 
         if (!response.ok) {
-            throw new Error('Failed to process transfer');
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to process transfer');
+            } else {
+                throw new Error('Server returned ' + response.status + ' ' + response.statusText);
+            }
         }
 
         const result = await response.json();
