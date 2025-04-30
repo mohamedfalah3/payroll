@@ -5,8 +5,9 @@ class BankTransaction extends BaseModel {
     static filename = 'bankTransactions.json';
 
     static async getBankTransactions() {
-        // Use the new getData method that supports both Firebase and local JSON
-        const transactions = await this.getData(this.filename);
+        // Always use Firebase for transactions
+        const collectionName = this.getCollectionName(this.filename);
+        const transactions = await this.getFirebaseCollection(collectionName);
         return transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
     }
 
@@ -14,23 +15,24 @@ class BankTransaction extends BaseModel {
         try {
             this.validateBankTransaction(transactionData);
             
-            const transactions = await this.getBankTransactions();
+            // Ensure tax is stored as a number
+            let tax = 0;
+            if (transactionData.tax !== undefined && transactionData.tax !== '') {
+                tax = parseFloat(transactionData.tax);
+            }
+            
             const newTransaction = {
                 id: uuidv4(),
                 date: new Date().toISOString(),
                 status: 'pending',
-                ...transactionData
+                ...transactionData,
+                tax: tax.toString()
             };
 
-            if (this.useFirebase) {
-                // Add directly to Firebase
-                await this.addFirebaseDoc(this.getCollectionName(this.filename), newTransaction);
-            } else {
-                // Add to local JSON file
-                transactions.push(newTransaction);
-                await this.writeJsonFile(this.filename, transactions);
-            }
-
+            // Add directly to Firebase
+            const collectionName = this.getCollectionName(this.filename);
+            await this.addFirebaseDoc(collectionName, newTransaction);
+            
             return newTransaction;
         } catch (error) {
             console.error('Error saving bank transaction:', error);
@@ -57,43 +59,37 @@ class BankTransaction extends BaseModel {
         if (!transaction.currency || !['USD', 'EUR', 'IQD'].includes(transaction.currency)) {
             throw new ValidationError('Invalid currency');
         }
+        
+        // Validate tax if provided
+        if (transaction.tax !== undefined && transaction.tax !== '') {
+            const taxAmount = parseFloat(transaction.tax);
+            if (isNaN(taxAmount) || taxAmount < 0) {
+                throw new ValidationError('Tax amount must be a positive number or zero');
+            }
+        }
     }
 
     static async toggleTransactionStatus(id) {
         try {
-            if (this.useFirebase) {
-                // Get the specific transaction from Firebase
-                const collectionName = this.getCollectionName(this.filename);
-                const transactions = await this.getFirebaseCollection(collectionName);
-                const transaction = transactions.find(t => t.id === id);
-                
-                if (!transaction) {
-                    throw new ValidationError('Transaction not found');
-                }
-
-                // Toggle the status
-                transaction.status = transaction.status.toLowerCase() === 'pending' ? 'completed' : 'pending';
-                transaction.lastModified = new Date().toISOString();
-                
-                // Update in Firebase
-                await this.updateFirebaseDoc(collectionName, id, transaction);
-                return transaction;
-            } else {
-                // Local JSON file approach
-                const transactions = await this.getBankTransactions();
-                const transaction = transactions.find(t => t.id === id);
-                
-                if (!transaction) {
-                    throw new ValidationError('Transaction not found');
-                }
-
-                // Toggle the status and normalize it
-                transaction.status = transaction.status.toLowerCase() === 'pending' ? 'completed' : 'pending';
-                transaction.lastModified = new Date().toISOString();
-
-                await this.writeJsonFile(this.filename, transactions);
-                return transaction;
+            // Get the specific transaction from Firebase
+            const collectionName = this.getCollectionName(this.filename);
+            const transaction = await this.getFirebaseDocById(collectionName, id);
+            
+            if (!transaction) {
+                throw new ValidationError('Transaction not found');
             }
+
+            // Toggle the status
+            const newStatus = transaction.status.toLowerCase() === 'pending' ? 'completed' : 'pending';
+            const updatedData = {
+                status: newStatus,
+                lastModified: new Date().toISOString()
+            };
+            
+            // Update in Firebase
+            await this.updateFirebaseDoc(collectionName, id, updatedData);
+            
+            return { ...transaction, ...updatedData };
         } catch (error) {
             console.error('Error toggling bank transaction status:', error);
             if (error instanceof ValidationError) {
@@ -105,8 +101,8 @@ class BankTransaction extends BaseModel {
 
     static async getTransactionById(id) {
         try {
-            const transactions = await this.getBankTransactions();
-            const transaction = transactions.find(t => t.id === id);
+            const collectionName = this.getCollectionName(this.filename);
+            const transaction = await this.getFirebaseDocById(collectionName, id);
             
             if (!transaction) {
                 throw new ValidationError('Transaction not found');
@@ -124,7 +120,8 @@ class BankTransaction extends BaseModel {
 
     static async deleteTransaction(id) {
         try {
-            await this.deleteById(this.filename, id);
+            const collectionName = this.getCollectionName(this.filename);
+            await this.deleteFirebaseDoc(collectionName, id);
         } catch (error) {
             console.error('Error deleting bank transaction:', error);
             throw error;
@@ -139,6 +136,12 @@ class BankTransaction extends BaseModel {
                 currency: transactionData.currency || 'USD' // Bank transactions default to USD
             });
 
+            // Process tax value
+            let tax = 0;
+            if (transactionData.tax !== undefined && transactionData.tax !== '') {
+                tax = parseFloat(transactionData.tax);
+            }
+
             const updatedData = {
                 amount: transactionData.amount.toString(),
                 bankName: transactionData.bankName.trim(),
@@ -146,32 +149,16 @@ class BankTransaction extends BaseModel {
                 transactionType: transactionData.transactionType,
                 currency: transactionData.currency || 'USD',
                 description: (transactionData.description || '').trim(),
+                tax: tax.toString(),
                 lastModified: new Date().toISOString()
             };
 
-            if (this.useFirebase) {
-                // Update directly in Firebase
-                const collectionName = this.getCollectionName(this.filename);
-                await this.updateFirebaseDoc(collectionName, id, updatedData);
-                
-                // Retrieve the updated document
-                const transactions = await this.getFirebaseCollection(collectionName);
-                return transactions.find(t => t.id === id);
-            } else {
-                // Update in local JSON file
-                const transactions = await this.getBankTransactions();
-                const transaction = transactions.find(t => t.id === id);
-                
-                if (!transaction) {
-                    throw new ValidationError('Transaction not found');
-                }
-
-                // Update the transaction
-                Object.assign(transaction, updatedData);
-
-                await this.writeJsonFile(this.filename, transactions);
-                return transaction;
-            }
+            // Update directly in Firebase
+            const collectionName = this.getCollectionName(this.filename);
+            await this.updateFirebaseDoc(collectionName, id, updatedData);
+            
+            // Return the updated document
+            return await this.getFirebaseDocById(collectionName, id);
         } catch (error) {
             console.error('Error updating bank transaction:', error);
             if (error instanceof ValidationError) {
@@ -181,8 +168,5 @@ class BankTransaction extends BaseModel {
         }
     }
 }
-
-// Initialize data file when module loads
-BankTransaction.initializeDataFile(BankTransaction.filename);
 
 module.exports = BankTransaction;

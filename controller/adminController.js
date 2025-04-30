@@ -30,10 +30,28 @@ class AdminController {
                 return res.status(404).json({ error: 'Transaction not found or status update failed' });
             }
             
-            res.json({ success: true, transaction });
+            // Check if this is an API request or a form submission
+            const isApiRequest = req.xhr || req.headers.accept?.includes('application/json');
+            
+            if (isApiRequest) {
+                res.json({ success: true, transaction });
+            } else {
+                // For form submissions, redirect back to the referring page
+                const returnUrl = req?.body?.returnUrl || '/hawala-history';
+                res.redirect(returnUrl);
+            }
         } catch (error) {
             console.error('Error toggling hawala transaction status:', error);
-            res.status(500).json({ error: error.message || 'Failed to update transaction status' });
+            
+            // Check if this is an API request or a form submission
+            const isApiRequest = req.xhr || req.headers.accept?.includes('application/json');
+            
+            if (isApiRequest) {
+                res.status(500).json({ error: error.message || 'Failed to update transaction status' });
+            } else {
+                // For form submissions, redirect with error message
+                res.status(500).send(error.message || 'Failed to update transaction status');
+            }
         }
     }
 

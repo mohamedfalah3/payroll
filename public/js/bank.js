@@ -57,6 +57,11 @@ async function handleFormSubmit(e) {
         const formData = new FormData(this);
         const data = Object.fromEntries(formData.entries());
         
+        // If tax field is empty, set it to 0
+        if (!data.tax || data.tax.trim() === '') {
+            data.tax = '0';
+        }
+        
         const response = await fetch('/bank/save', {
             method: 'POST',
             headers: {
@@ -79,7 +84,14 @@ async function handleFormSubmit(e) {
         
         // Update success modal content
         document.getElementById('successMessage').textContent = 'Bank transfer processed successfully!';
-        document.getElementById('modalAmount').textContent = `${data.currency} ${data.amount}`;
+        
+        // Format the amount and include tax information if tax was entered
+        let amountDisplay = `${data.currency} ${parseFloat(data.amount).toLocaleString()}`;
+        if (parseFloat(data.tax) > 0) {
+            amountDisplay += ` (Tax: ${data.currency} ${parseFloat(data.tax).toLocaleString()})`;
+        }
+        
+        document.getElementById('modalAmount').textContent = amountDisplay;
         document.getElementById('modalBankName').textContent = data.bankName;
         document.getElementById('modalAccountName').textContent = data.accountName;
         document.getElementById('modalType').textContent = data.transactionType;

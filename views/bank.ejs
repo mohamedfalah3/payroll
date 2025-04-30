@@ -10,7 +10,7 @@
     <!-- Custom CSS -->
     <link rel="stylesheet" href="/css/bank.css">
 </head>
-<body>
+<body class="bank-page">
     <div class="container-fluid">
         <div class="row">
             <!-- Sidebar -->
@@ -36,9 +36,9 @@
                         <% if (banks && banks.length > 0) { %>
                             <% banks.forEach(function(bank) { %>
                                 <div class="col-md-3">
-                                    <div class="card bank-card" data-bank="<%= bank %>">
+                                    <div class="card bank-card" data-bank="<%= typeof bank === 'object' ? bank.name : bank %>">
                                         <div class="card-body">
-                                            <h5 class="card-title"><%= bank %></h5>
+                                            <h5 class="card-title"><%= typeof bank === 'object' ? bank.name : bank %></h5>
                                         </div>
                                     </div>
                                 </div>
@@ -55,49 +55,75 @@
                     <form id="bankForm">
                         <div class="row g-4">
                             <div class="col-md-6">
-                                <label class="form-label">Bank Name</label>
-                                <input type="text" class="form-control" name="bankName" readonly required placeholder="Click a bank card above to select">
+                                <div class="form-floating">
+                                    <input type="text" class="form-control" id="bankNameInput" name="bankName" readonly required placeholder=" ">
+                                    <label for="bankNameInput">Bank Name</label>
+                                </div>
                                 <% if (!banks || banks.length === 0) { %>
                                     <small class="text-muted">No banks available. Please <a href="/add-bank">add a bank</a> first.</small>
                                 <% } %>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">Account Name</label>
-                                <select class="form-select" name="accountName" required>
-                                    <option value="">Select account</option>
-                                    <% if (accounts && accounts.length > 0) { %>
-                                        <% accounts.forEach(function(account) { %>
-                                            <option value="<%= account %>"><%= account %></option>
-                                        <% }); %>
-                                    <% } %>
-                                </select>
+                                <div class="form-floating">
+                                    <select class="form-select" id="accountNameSelect" name="accountName" required>
+                                        <option value="">Select account</option>
+                                        <% if (accounts && accounts.length > 0) { %>
+                                            <% accounts.forEach(function(account) { %>
+                                                <option value="<%= typeof account === 'object' ? account.name : account %>"><%= typeof account === 'object' ? account.name : account %></option>
+                                            <% }); %>
+                                        <% } %>
+                                    </select>
+                                    <label for="accountNameSelect">Account Name</label>
+                                </div>
                                 <% if (!accounts || accounts.length === 0) { %>
                                     <small class="text-muted">No accounts available. Please <a href="/add-account">add an account</a> first.</small>
                                 <% } %>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">Amount</label>
                                 <div class="input-group">
-                                    <select class="form-select" name="currency" style="max-width: 100px;" required>
-                                        <option value="USD" selected>USD</option>
-                                        <option value="EUR">EUR</option>
-                                        <option value="IQD">IQD</option>
-                                    </select>
-                                    <input type="number" class="form-control" name="amount" placeholder="Enter amount" required>
+                                    <div class="form-floating" style="max-width: 130px;">
+                                        <select class="form-select" id="currencySelect" name="currency" required>
+                                            <option value="USD" selected>USD</option>
+                                            <option value="EUR">EUR</option>
+                                            <option value="IQD">IQD</option>
+                                        </select>
+                                        <label for="currencySelect">Currency</label>
+                                    </div>
+                                    <div class="form-floating flex-grow-1">
+                                        <input type="number" class="form-control" id="amountInput" name="amount" placeholder=" " required>
+                                        <label for="amountInput">Amount</label>
+                                    </div>
                                 </div>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">Transaction Type</label>
-                                <select class="form-select" name="transactionType" required>
-                                    <option value="receive">Receive Money</option>
-                                </select>
+                                <label class="form-label">Tax</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="bi bi-cash"></i>
+                                    </span>
+                                    <div class="form-floating flex-grow-1">
+                                        <input type="number" class="form-control" id="taxInput" name="tax" placeholder=" " step="0.01" min="0">
+                                        <label for="taxInput">Tax Amount</label>
+                                    </div>
+                                </div>
+                                <small class="text-muted">Enter tax amount in the same currency as the transaction</small>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    <select class="form-select" id="transactionTypeSelect" name="transactionType" required>
+                                        <option value="receive">Receive Money</option>
+                                    </select>
+                                    <label for="transactionTypeSelect">Transaction Type</label>
+                                </div>
                             </div>
                             <div class="col-12">
-                                <label class="form-label">Transfer Description</label>
-                                <textarea class="form-control" name="description" rows="3" placeholder="Enter transfer description"></textarea>
+                                <div class="form-floating">
+                                    <textarea class="form-control" id="descriptionTextarea" name="description" rows="3" placeholder=" " style="min-height: 100px;"></textarea>
+                                    <label for="descriptionTextarea">Transfer Description</label>
+                                </div>
                             </div>
-                            <div class="col-12">
-                                <button type="submit" class="btn btn-primary w-100">Process Bank Transfer</button>
+                            <div class="col-12 mt-4">
+                                <button type="submit" class="btn btn-primary w-100 py-3">Process Bank Transfer</button>
                             </div>
                         </div>
                     </form>

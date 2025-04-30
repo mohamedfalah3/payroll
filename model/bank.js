@@ -6,13 +6,12 @@ class Bank extends BaseModel {
     constructor() {
         super();
         this.banksFile = 'banks.json';
-        this.constructor.initializeDataFile(this.banksFile);
+        this.collectionName = this.constructor.getCollectionName(this.banksFile);
     }
 
     async getAllBanks() {
         try {
-            const banks = await this.constructor.getData(this.banksFile);
-            return banks || [];
+            return await this.constructor.getFirebaseCollection(this.collectionName) || [];
         } catch (error) {
             console.error('Error reading banks:', error);
             return [];
@@ -25,7 +24,7 @@ class Bank extends BaseModel {
         }
         
         try {
-            return await this.constructor.getById(this.banksFile, id);
+            return await this.constructor.getFirebaseDocById(this.collectionName, id);
         } catch (error) {
             console.error(`Error getting bank with ID ${id}:`, error);
             return null;
@@ -57,16 +56,10 @@ class Bank extends BaseModel {
                 createdAt: new Date().toISOString()
             };
             
-            // Handle array of objects for Firestore compatibility
-            if (this.constructor.useFirebase) {
-                await this.constructor.addFirebaseDoc(
-                    this.constructor.getCollectionName(this.banksFile),
-                    newBank
-                );
-            } else {
-                banks.push(newBank);
-                await this.constructor.writeJsonFile(this.banksFile, banks);
-            }
+            await this.constructor.addFirebaseDoc(
+                this.collectionName,
+                newBank
+            );
             
             return { 
                 success: true, 
@@ -85,33 +78,15 @@ class Bank extends BaseModel {
         }
 
         try {
-            if (this.constructor.useFirebase) {
-                const updatedBank = await this.constructor.updateFirebaseDoc(
-                    this.constructor.getCollectionName(this.banksFile),
-                    id,
-                    bankData
-                );
-                
-                return updatedBank ? 
-                    { success: true, message: 'Bank updated successfully', bank: updatedBank } :
-                    { success: false, message: 'Failed to update bank' };
-            } else {
-                const banks = await this.getAllBanks();
-                const bankIndex = banks.findIndex(bank => bank && bank.id === id);
-                
-                if (bankIndex === -1) {
-                    return { success: false, message: 'Bank not found' };
-                }
-                
-                banks[bankIndex] = { ...banks[bankIndex], ...bankData };
-                await this.constructor.writeJsonFile(this.banksFile, banks);
-                
-                return { 
-                    success: true, 
-                    message: 'Bank updated successfully',
-                    bank: banks[bankIndex]
-                };
-            }
+            const updatedBank = await this.constructor.updateFirebaseDoc(
+                this.collectionName,
+                id,
+                bankData
+            );
+            
+            return updatedBank ? 
+                { success: true, message: 'Bank updated successfully', bank: updatedBank } :
+                { success: false, message: 'Failed to update bank' };
         } catch (error) {
             console.error(`Error updating bank ${id}:`, error);
             return { success: false, message: 'Failed to update bank' };
@@ -124,7 +99,7 @@ class Bank extends BaseModel {
         }
 
         try {
-            await this.constructor.deleteById(this.banksFile, id);
+            await this.constructor.deleteFirebaseDoc(this.collectionName, id);
             return { success: true, message: 'Bank deleted successfully' };
         } catch (error) {
             console.error(`Error deleting bank ${id}:`, error);

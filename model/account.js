@@ -5,16 +5,28 @@ class Account extends BaseModel {
     constructor() {
         super();
         this.accountsFile = 'accounts.json';
-        this.constructor.initializeDataFile(this.accountsFile);
+        this.collectionName = this.constructor.getCollectionName(this.accountsFile);
     }
 
     async getAllAccounts() {
         try {
-            const accounts = await this.constructor.getData(this.accountsFile);
-            return accounts || [];
+            return await this.constructor.getFirebaseCollection(this.collectionName) || [];
         } catch (error) {
             console.error('Error reading accounts:', error);
             return [];
+        }
+    }
+
+    async getAccountById(id) {
+        if (!id) {
+            return null;
+        }
+        
+        try {
+            return await this.constructor.getFirebaseDocById(this.collectionName, id);
+        } catch (error) {
+            console.error(`Error getting account with ID ${id}:`, error);
+            return null;
         }
     }
 
@@ -42,16 +54,11 @@ class Account extends BaseModel {
                 createdAt: new Date().toISOString()
             };
             
-            // Handle array of objects for Firestore compatibility
-            if (this.constructor.useFirebase) {
-                await this.constructor.addFirebaseDoc(
-                    this.constructor.getCollectionName(this.accountsFile),
-                    newAccount
-                );
-            } else {
-                accounts.push(newAccount);
-                await this.constructor.writeJsonFile(this.accountsFile, accounts);
-            }
+            // Add to Firestore
+            await this.constructor.addFirebaseDoc(
+                this.collectionName,
+                newAccount
+            );
             
             return { 
                 success: true, 
@@ -64,52 +71,21 @@ class Account extends BaseModel {
         }
     }
 
-    async getAccountById(id) {
-        if (!id) {
-            return null;
-        }
-        
-        try {
-            return await this.constructor.getById(this.accountsFile, id);
-        } catch (error) {
-            console.error(`Error getting account with ID ${id}:`, error);
-            return null;
-        }
-    }
-
     async updateAccount(id, accountData) {
         if (!id || !accountData) {
             return { success: false, message: 'Account ID and data are required' };
         }
 
         try {
-            if (this.constructor.useFirebase) {
-                const updatedAccount = await this.constructor.updateFirebaseDoc(
-                    this.constructor.getCollectionName(this.accountsFile),
-                    id,
-                    accountData
-                );
-                
-                return updatedAccount ? 
-                    { success: true, message: 'Account updated successfully', account: updatedAccount } :
-                    { success: false, message: 'Failed to update account' };
-            } else {
-                const accounts = await this.getAllAccounts();
-                const accountIndex = accounts.findIndex(account => account && account.id === id);
-                
-                if (accountIndex === -1) {
-                    return { success: false, message: 'Account not found' };
-                }
-                
-                accounts[accountIndex] = { ...accounts[accountIndex], ...accountData };
-                await this.constructor.writeJsonFile(this.accountsFile, accounts);
-                
-                return { 
-                    success: true, 
-                    message: 'Account updated successfully',
-                    account: accounts[accountIndex]
-                };
-            }
+            const updatedAccount = await this.constructor.updateFirebaseDoc(
+                this.collectionName,
+                id,
+                accountData
+            );
+            
+            return updatedAccount ? 
+                { success: true, message: 'Account updated successfully', account: updatedAccount } :
+                { success: false, message: 'Failed to update account' };
         } catch (error) {
             console.error(`Error updating account ${id}:`, error);
             return { success: false, message: 'Failed to update account' };
@@ -122,7 +98,7 @@ class Account extends BaseModel {
         }
 
         try {
-            await this.constructor.deleteById(this.accountsFile, id);
+            await this.constructor.deleteFirebaseDoc(this.collectionName, id);
             return { success: true, message: 'Account deleted successfully' };
         } catch (error) {
             console.error(`Error deleting account ${id}:`, error);

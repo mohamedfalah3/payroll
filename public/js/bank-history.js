@@ -187,38 +187,52 @@ function updateSummary() {
     let totalReceivedEUR = 0;
     let receiveCount = 0;
 
+    // Process the filtered rows to get transaction data
     filteredRows.forEach(row => {
         if (!row.classList.contains('no-transactions')) {
-            const amountCell = row.querySelector('td:nth-child(4)').textContent.trim();
             const type = row.querySelector('.badge').textContent.trim().toLowerCase();
             
             if (type === 'receive') {
-                if (amountCell.startsWith('IQD')) {
-                    totalReceivedIQD += parseFloat(amountCell.replace('IQD', '').replace(/,/g, ''));
-                } else if (amountCell.startsWith('€')) {
-                    totalReceivedEUR += parseFloat(amountCell.replace('€', ''));
-                } else {
-                    totalReceivedUSD += parseFloat(amountCell.replace('$', ''));
+                // Get the edit button to extract original data
+                const editButton = row.querySelector('button.btn-primary');
+                
+                if (editButton) {
+                    try {
+                        const transactionDataMatch = editButton.getAttribute('onclick').match(/showEditModal\(event, '(.+?)'\)/);
+                        if (transactionDataMatch && transactionDataMatch[1]) {
+                            const transactionData = JSON.parse(transactionDataMatch[1].replace(/\\"/g, '"'));
+                            
+                            // Get amount and tax directly from the transaction data
+                            const amount = parseFloat(transactionData.amount || 0);
+                            const tax = parseFloat(transactionData.tax || 0);
+                            const currency = transactionData.currency || 'USD';
+                            
+                            // Calculate after-tax amount
+                            const netAmount = amount - tax;
+                            
+                            // Add to the correct currency total
+                            if (currency === 'IQD') {
+                                totalReceivedIQD += netAmount;
+                            } else if (currency === 'EUR') {
+                                totalReceivedEUR += netAmount;
+                            } else {
+                                totalReceivedUSD += netAmount;
+                            }
+                            
+                            receiveCount++;
+                        }
+                    } catch (e) {
+                        console.error('Error parsing transaction data', e);
+                    }
                 }
-                receiveCount++;
             }
         }
     });
 
-    // Calculate after-tax amounts
-    const totalReceivedUSDAfterTax = totalReceivedUSD * 0.95;
-    const totalReceivedIQDAfterTax = totalReceivedIQD * 0.95;
-    const totalReceivedEURAfterTax = totalReceivedEUR * 0.95;
-
-    // Update amounts in summary box
-    document.querySelector('.amount.amount-iqd').textContent = `IQD: ${totalReceivedIQDAfterTax.toLocaleString()}`;
-    document.querySelector('.amount-before-tax:nth-of-type(2)').textContent = `Before Tax IQD: ${totalReceivedIQD.toLocaleString()}`;
-    
-    document.querySelector('.amount.amount-usd').textContent = `$${totalReceivedUSDAfterTax.toFixed(2)}`;
-    document.querySelector('.amount-before-tax:nth-of-type(4)').textContent = `Before Tax: $${totalReceivedUSD.toFixed(2)}`;
-    
-    document.querySelector('.amount.amount-euro').textContent = `€${totalReceivedEURAfterTax.toFixed(2)}`;
-    document.querySelector('.amount-before-tax:nth-of-type(6)').textContent = `Before Tax EUR: €${totalReceivedEUR.toFixed(2)}`;
+    // Update amounts in summary box (showing after-tax amounts)
+    document.querySelector('.amount.amount-iqd').textContent = `IQD: ${totalReceivedIQD.toLocaleString()}`;
+    document.querySelector('.amount.amount-usd').textContent = `$${totalReceivedUSD.toFixed(2)}`;
+    document.querySelector('.amount.amount-euro').textContent = `€${totalReceivedEUR.toFixed(2)}`;
     
     const formattedDate = new Date(currentDate).toLocaleDateString('en-US', {
         weekday: 'short',
@@ -341,6 +355,19 @@ function showEditModal(event, transactionData) {
         // Fill the form with current values
         document.getElementById('editTransactionId').value = transaction.id;
         document.getElementById('editAmount').value = transaction.amount;
+        
+        // Set currency value
+        const currencySelect = document.getElementById('editCurrency');
+        if (currencySelect) {
+            currencySelect.value = transaction.currency || 'USD';
+        }
+        
+        // Set tax value if it exists
+        const taxField = document.getElementById('editTax');
+        if (taxField) {
+            taxField.value = transaction.tax || '0';
+        }
+        
         document.getElementById('editBankName').value = transaction.bankName;
 
         // Populate the account dropdown and pre-select the current account
@@ -351,9 +378,9 @@ function showEditModal(event, transactionData) {
         if (window.accountsList && Array.isArray(window.accountsList)) {
             window.accountsList.forEach(account => {
                 const option = document.createElement('option');
-                option.value = account;
-                option.text = account;
-                option.selected = (transaction.accountName === account);
+                option.value = account.name;
+                option.text = account.name;
+                option.selected = (transaction.accountName === account.name);
                 accountDropdown.appendChild(option);
             });
         }
@@ -389,10 +416,7 @@ document.getElementById('confirmEdit')?.addEventListener('click', async function
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                ...data,
-                currency: 'USD' // Bank transactions are always in USD
-            })
+            body: JSON.stringify(data) // Use data as is with its currency value
         });
 
         if (response.ok) {
@@ -404,9 +428,23 @@ document.getElementById('confirmEdit')?.addEventListener('click', async function
                 const cells = row.getElementsByTagName('td');
                 cells[1].textContent = result.bankName; // Bank Name
                 cells[2].textContent = result.accountName; // Account Name
-                cells[3].innerHTML = `$${Number(result.amount).toLocaleString()}`; // Amount
+                
+                // Format the amount according to the currency
+                let formattedAmount;
+                if (result.currency === 'IQD') {
+                    formattedAmount = `IQD ${Number(result.amount).toLocaleString()}`;
+                } else if (result.currency === 'EUR') {
+                    formattedAmount = `€${Number(result.amount).toFixed(2)}`;
+                } else {
+                    formattedAmount = `$${Number(result.amount).toFixed(2)}`;
+                }
+                cells[3].innerHTML = formattedAmount; // Amount
+                
                 cells[5].textContent = result.description || '-'; // Description
             }
+            
+            // Update summary totals
+            applyFilters();
             
             // Close the modal
             bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
@@ -429,6 +467,8 @@ function generateReportData() {
 
     // Filter transactions for the current date
     const currentDateTransactions = filteredRows.filter(row => {
+        if (row.classList.contains('no-transactions')) return false;
+        
         const dateCell = row.querySelector('td[data-full-date]');
         const rowDate = new Date(dateCell.getAttribute('data-full-date'));
         const rowDateStr = new Date(Date.UTC(
@@ -439,7 +479,7 @@ function generateReportData() {
         return rowDateStr === currentDate;
     });
 
-    // Add filtered transactions to the report
+    // Add filtered transactions to the report with after-tax amounts
     currentDateTransactions.forEach(row => {
         const tr = document.createElement('tr');
         
@@ -451,9 +491,46 @@ function generateReportData() {
         const accountName = row.cells[2].textContent.trim();
         tr.insertCell().textContent = accountName;
 
-        // Amount
-        const amount = row.cells[3].textContent.trim();
-        tr.insertCell().textContent = amount;
+        // Get the original amount and tax from the transaction data
+        const amountCell = row.cells[3].textContent.trim();
+        let currency = 'USD';
+        let amount = 0;
+        let tax = 0;
+        let afterTaxAmount = '';
+
+        // Extract transaction data from edit button
+        const editButton = row.querySelector('button.btn-primary');
+        if (editButton) {
+            try {
+                const transactionDataMatch = editButton.getAttribute('onclick').match(/showEditModal\(event, '(.+?)'\)/);
+                if (transactionDataMatch && transactionDataMatch[1]) {
+                    const transactionData = JSON.parse(transactionDataMatch[1].replace(/\\"/g, '"'));
+                    
+                    // Extract amount and tax
+                    amount = parseFloat(transactionData.amount || 0);
+                    tax = parseFloat(transactionData.tax || 0);
+                    currency = transactionData.currency || 'USD';
+                    
+                    // Calculate after-tax amount
+                    const netAmount = Math.max(0, amount - tax);
+                    
+                    // Format the after-tax amount according to currency without "After Tax" label
+                    if (currency === 'IQD') {
+                        afterTaxAmount = `IQD ${netAmount.toLocaleString()}`;
+                    } else if (currency === 'EUR') {
+                        afterTaxAmount = `€${netAmount.toFixed(2)}`;
+                    } else {
+                        afterTaxAmount = `$${netAmount.toFixed(2)}`;
+                    }
+                }
+            } catch (e) {
+                console.error('Error parsing transaction data', e);
+                afterTaxAmount = amountCell; // Fallback to original amount if error
+            }
+        }
+
+        // Use after-tax amount or fall back to original amount
+        tr.insertCell().textContent = afterTaxAmount || amountCell;
 
         // Date (month and day only)
         const dateCell = row.querySelector('td[data-full-date]');

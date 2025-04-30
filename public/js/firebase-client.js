@@ -104,7 +104,19 @@ const addDocument = async (collectionName, data) => {
 const updateDocument = async (collectionName, id, data) => {
   try {
     const docRef = doc(db, collectionName, id);
-    await updateDoc(docRef, data);
+    
+    // First check if document exists
+    const docSnap = await getDoc(docRef);
+    
+    if (docSnap.exists()) {
+      // Document exists, update it
+      await updateDoc(docRef, data);
+    } else {
+      // Document doesn't exist, create it with setDoc to prevent errors
+      console.log(`Document ${id} doesn't exist in ${collectionName}, creating it instead of updating`);
+      await setDoc(docRef, { ...data, id });
+    }
+    
     return { id, ...data };
   } catch (error) {
     console.error(`Error updating document ${id} in ${collectionName}:`, error);

@@ -27,7 +27,7 @@
 
             <!-- Main Content -->
             <div class="col main-content">
-                <div class="form-container">
+                <div class="market-form">
                     <h2 class="mb-4">Add New Market</h2>
                     <% if (error) { %>
                         <div class="alert alert-danger mb-3">
@@ -39,7 +39,7 @@
                             <label for="marketName" class="form-label">Market Name</label>
                             <input type="text" class="form-control" id="marketName" name="marketName" required>
                         </div>
-                        <button type="submit" class="btn btn-submit">Add Market</button>
+                        <button type="submit" class="btn btn-primary w-100">Add Market</button>
                     </form>
                 </div>
 
@@ -48,8 +48,17 @@
                     <% if (markets && markets.length > 0) { %>
                         <% markets.forEach(market => { %>
                             <div class="market-list-item">
-                                <i class="bi bi-shop market-icon"></i>
-                                <%= market %>
+                                <div class="market-info">
+                                    <i class="bi bi-shop market-icon"></i>
+                                    <%= typeof market === 'object' ? market.name : market %>
+                                </div>
+                                <button class="btn-delete" 
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#deleteMarketModal" 
+                                        data-market-id="<%= typeof market === 'object' ? market.id : market %>"
+                                        data-market-name="<%= typeof market === 'object' ? market.name : market %>">
+                                    <i class="bi bi-trash"></i>
+                                </button>
                             </div>
                         <% }); %>
                     <% } else { %>
@@ -60,6 +69,123 @@
         </div>
     </div>
 
+    <!-- Toast container for notifications -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer"></div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal fade" id="deleteMarketModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-danger text-white border-0">
+                    <h5 class="modal-title" id="deleteModalLabel">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>Delete Market
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center py-4">
+                    <div class="mb-4">
+                        <i class="bi bi-trash text-danger" style="font-size: 3.5rem;"></i>
+                    </div>
+                    <p class="mb-0 fs-5">Are you sure you want to delete <span id="marketNameToDelete"></span>? This action cannot be undone.</p>
+                    <input type="hidden" id="marketIdToDelete">
+                </div>
+                <div class="modal-footer border-0 justify-content-center">
+                    <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">
+                        <i class="bi bi-x me-1"></i>Cancel
+                    </button>
+                    <button type="button" class="btn btn-danger px-4" id="confirmDelete">
+                        <i class="bi bi-trash me-1"></i>Delete
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Toast notification function
+        function showToast(message, type = 'info') {
+            // Create toast element
+            const toastId = 'toast-' + Date.now();
+            const toast = document.createElement('div');
+            toast.className = `toast align-items-center text-white bg-${type} border-0`;
+            toast.id = toastId;
+            toast.setAttribute('role', 'alert');
+            toast.setAttribute('aria-live', 'assertive');
+            toast.setAttribute('aria-atomic', 'true');
+            
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">
+                        ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            `;
+            
+            // Add to container
+            document.getElementById('toastContainer').appendChild(toast);
+            
+            // Initialize and show toast
+            const bsToast = new bootstrap.Toast(toast, {
+                autohide: true,
+                delay: 5000
+            });
+            bsToast.show();
+            
+            // Remove from DOM after hiding
+            toast.addEventListener('hidden.bs.toast', function() {
+                this.remove();
+            });
+        }
+
+        // Handle delete market modal
+        const deleteMarketModal = document.getElementById('deleteMarketModal');
+        if (deleteMarketModal) {
+            deleteMarketModal.addEventListener('show.bs.modal', function (event) {
+                const button = event.relatedTarget;
+                const marketId = button.getAttribute('data-market-id');
+                const marketName = button.getAttribute('data-market-name');
+                
+                document.getElementById('marketNameToDelete').textContent = marketName;
+                document.getElementById('marketIdToDelete').value = marketId;
+            });
+        }
+        
+        // Handle delete confirmation
+        document.getElementById('confirmDelete').addEventListener('click', async function() {
+            const marketId = document.getElementById('marketIdToDelete').value;
+            
+            try {
+                // Show loading state
+                const confirmButton = document.getElementById('confirmDelete');
+                confirmButton.disabled = true;
+                confirmButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Deleting...';
+                
+                // Send delete request
+                const response = await fetch(`/add-market/${marketId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    // Close modal and reload page to show updated list
+                    const modalInstance = bootstrap.Modal.getInstance(deleteMarketModal);
+                    modalInstance.hide();
+                    window.location.reload();
+                } else {
+                    const errorData = await response.json();
+                    showToast(errorData.message || 'Failed to delete market', 'danger');
+                }
+            } catch (error) {
+                console.error('Error deleting market:', error);
+                showToast('An error occurred while deleting the market', 'danger');
+            } finally {
+                // Reset button state if modal isn't closed
+                const confirmButton = document.getElementById('confirmDelete');
+                confirmButton.disabled = false;
+                confirmButton.innerHTML = '<i class="bi bi-trash me-1"></i>Delete';
+            }
+        });
+    </script>
 </body>
 </html>

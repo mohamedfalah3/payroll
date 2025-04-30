@@ -3,6 +3,29 @@
     --secondary-color: #1e40af;
     --background-color: #f1f5f9;
     --text-color: #1e293b;
+    --danger-color: #e11d48;
+    --transition-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes fadeIn {
+    0% { opacity: 0; transform: translateY(10px); }
+    100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInLeft {
+    0% { opacity: 0; transform: translateX(-20px); }
+    100% { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+@keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
 }
 
 body {
@@ -19,6 +42,8 @@ body {
     left: 0;
     z-index: 1000;
     width: 250px;
+    box-shadow: 3px 0 10px rgba(0, 0, 0, 0.1);
+    transition: transform 0.4s var(--transition-function);
 }
 
 .sidebar h3 {
@@ -26,37 +51,62 @@ body {
     font-size: 1.25rem;
     padding: 0 1.5rem;
     margin-bottom: 2rem;
-    font-weight: 500;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    animation: fadeIn 0.8s ease both;
 }
 
 .sidebar a {
     color: rgba(255, 255, 255, 0.9);
     text-decoration: none;
-    padding: 0.75rem 1.5rem;
-    display: block;
-    transition: all 0.3s ease;
+    padding: 0.85rem 1.5rem;
+    display: flex;
+    align-items: center;
+    transition: all 0.3s var(--transition-function);
     border-radius: 0 25px 25px 0;
-    margin: 0.5rem 0;
+    margin: 0.6rem 0;
+    gap: 0.75rem;
+    position: relative;
+    animation: slideInLeft 0.5s ease both;
+    animation-delay: calc(var(--item-index, 0) * 0.1s);
+}
+
+.sidebar a::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0;
+    height: 60%;
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 0 4px 4px 0;
+    transition: width 0.3s var(--transition-function);
+    z-index: -1;
+}
+
+.sidebar a:hover::before, .sidebar a.active::before {
+    width: 6px;
 }
 
 .sidebar a:hover, .sidebar a.active {
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: rgba(255, 255, 255, 0.15);
     color: white;
     transform: translateX(10px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .main-content {
     margin-left: 250px;
     padding: 2rem;
-    max-width: 1200px;
 }
 
-.form-container {
+.market-form {
     background: white;
     padding: 2rem;
     border-radius: 16px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-    max-width: 800px;
+    max-width: 600px;
     margin: 0 auto;
 }
 
@@ -66,49 +116,40 @@ body {
     border-radius: 16px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
     margin-top: 2rem;
-    max-width: 800px;
+    max-width: 600px;
     margin: 2rem auto 0;
 }
 
 .form-label {
-    display: block;
-    margin-bottom: 0.5rem;
     font-weight: 500;
-    color: #475569;
+    color: var(--text-color);
+    margin-bottom: 0.5rem;
 }
 
 .form-control {
-    width: 100%;
-    padding: 0.8rem 1.2rem;
-    border: 1px solid #dee2e6;
+    border: 1.5px solid #e2e8f0;
+    padding: 0.75rem;
     border-radius: 8px;
-    font-size: 1rem;
     transition: all 0.3s ease;
 }
 
 .form-control:focus {
     border-color: var(--primary-color);
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-    outline: none;
 }
 
-.btn-submit {
+.btn-primary {
     background-color: var(--primary-color);
-    color: white;
-    padding: 0.8rem 1.5rem;
     border: none;
-    border-radius: 8px;
+    padding: 0.75rem 1.5rem;
     font-weight: 500;
-    width: 100%;
-    margin-top: 1rem;
-    box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+    border-radius: 8px;
     transition: all 0.3s ease;
 }
 
-.btn-submit:hover {
+.btn-primary:hover {
     background-color: var(--secondary-color);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 6px rgba(37, 99, 235, 0.25);
+    transform: translateY(-2px);
 }
 
 .market-list-item {
@@ -116,15 +157,16 @@ body {
     border-bottom: 1px solid #e2e8f0;
     display: flex;
     align-items: center;
-    transition: all 0.2s ease;
+    justify-content: space-between;
 }
 
 .market-list-item:last-child {
     border-bottom: none;
 }
 
-.market-list-item:hover {
-    background-color: rgba(37, 99, 235, 0.05);
+.market-info {
+    display: flex;
+    align-items: center;
 }
 
 .market-icon {
@@ -133,7 +175,45 @@ body {
     font-size: 1.25rem;
 }
 
-/* Responsive styles */
+.btn-delete {
+    background-color: var(--danger-color);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+}
+
+.btn-delete:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+.modal-content {
+    border-radius: 16px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.modal-header {
+    border-bottom: none;
+    padding: 1.5rem 1.5rem 0.5rem;
+}
+
+.modal-footer {
+    border-top: none;
+    padding: 0.5rem 1.5rem 1.5rem;
+}
+
+.modal-title {
+    color: var(--text-color);
+    font-weight: 600;
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
 @media (max-width: 992px) {
     .sidebar {
         width: 100%;
@@ -170,8 +250,9 @@ body {
         max-width: 100%;
     }
 
-    .form-container {
-        margin: 1rem;
+    .market-form,
+    .markets-list {
+        margin: 1rem auto;
     }
 }
 
@@ -180,12 +261,9 @@ body {
         flex-direction: column;
     }
 
-    .form-container {
-        margin: 1rem;
-        padding: 1.5rem;
-    }
-    
+    .market-form,
     .markets-list {
         margin: 1rem;
+        padding: 1.5rem;
     }
 }

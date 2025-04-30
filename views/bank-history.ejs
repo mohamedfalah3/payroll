@@ -97,7 +97,7 @@
                                     <select id="bankFilter" class="form-control bank-select">
                                         <option value="">All Banks</option>
                                         <% for(let bank of banks) { %>
-                                            <option value="<%= bank %>"><%= bank %></option>
+                                            <option value="<%= bank.name %>"><%= bank.name %></option>
                                         <% } %>
                                     </select>
                                     <button class="btn clear-btn" onclick="clearBankFilter()">
@@ -115,7 +115,7 @@
                     </div>
                 </div>
 
-                <div class="transaction-summary" >
+                <div class="transaction-summary">
                     <div class="row">
                         <div class="col-md-6">
                             <div class="summary-box receive-box">
@@ -126,20 +126,15 @@
                                     <h3>Total Received</h3>
                                     <%
                                         var totalReceived = 0;
-                                        var totalReceivedAfterTax = 0;
                                         if (transactions) {
                                             totalReceived = transactions
                                                 .filter(function(t) { return t.transactionType === 'receive'; })
                                                 .reduce(function(sum, t) { return sum + parseFloat(t.amount); }, 0);
-                                            totalReceivedAfterTax = totalReceived * 0.95;
                                         }
                                     %>
                                     <div class="amount amount-iqd">IQD: 0</div>
-                                    <div class="amount-before-tax">Before Tax IQD: 0</div>
-                                    <div class="amount amount-usd">$<%= totalReceivedAfterTax.toFixed(2) %></div>
-                                    <div class="amount-before-tax">Before Tax: $<%= totalReceived.toFixed(2) %></div>
+                                    <div class="amount amount-usd">$<%= totalReceived.toFixed(2) %></div>
                                     <div class="amount amount-euro">EUR: 0</div>
-                                    <div class="amount-before-tax">Before Tax EUR: 0</div>
                                     <div class="count">
                                         <%= transactions ? transactions.filter(function(t) { return t.transactionType === 'receive'; }).length : 0 %> Transactions
                                     </div>
@@ -153,14 +148,14 @@
                     <table class="table">
                         <thead>
                             <tr>
-                                <th>Date</th>
-                                <th>Bank</th>
-                                <th>Account</th>
-                                <th>Amount</th>
-                                <th>Type</th>
-                                <th>Description</th>
-                                <th>Status</th>
-                                <th>Edit/Delete</th>
+                                <th style="font-weight: 500;">Date</th>
+                                <th style="font-weight: 500;">Bank</th>
+                                <th style="font-weight: 500;">Account</th>
+                                <th style="font-weight: 500;">Amount</th>
+                                <th style="font-size: 0.9em;font-weight: 500;">Type</th>
+                                <th style="font-weight: 500;">Description</th>
+                                <th style="font-weight: 500;">Status</th>
+                                <th style="font-weight: 500;">Edit/Delete</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -190,12 +185,18 @@
                                         <td><%= transaction.bankName %></td>
                                         <td><%= transaction.accountName %></td>
                                         <td>
-                                            <% if (transaction.currency === 'IQD') { %>
-                                                IQD <%= Number(transaction.amount).toLocaleString() %>
+                                            <% 
+                                                const tax = parseFloat(transaction.tax || 0);
+                                                const amount = parseFloat(transaction.amount);
+                                                const amountAfterTax = Math.max(0, amount - tax);
+                                                
+                                                if (transaction.currency === 'IQD') { 
+                                            %>
+                                                IQD <%= Number(amountAfterTax).toLocaleString() %>
                                             <% } else if (transaction.currency === 'EUR') { %>
-                                                €<%= Number(transaction.amount).toFixed(2) %>
+                                                €<%= Number(amountAfterTax).toFixed(2) %>
                                             <% } else { %>
-                                                $<%= Number(transaction.amount).toFixed(2) %>
+                                                $<%= Number(amountAfterTax).toFixed(2) %>
                                             <% } %>
                                         </td>
                                         <td>
@@ -286,25 +287,25 @@
 
     <!-- Add Delete Confirmation Modal -->
     <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-danger text-white border-0">
                     <h5 class="modal-title" id="deleteModalLabel">
-                        <i class="bi bi-exclamation-triangle-fill text-danger me-2"></i>Delete Transaction
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>Delete Transaction
                     </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body text-center">
+                <div class="modal-body text-center py-4">
                     <div class="mb-4">
-                        <i class="bi bi-trash text-danger" style="font-size: 3rem;"></i>
+                        <i class="bi bi-trash text-danger" style="font-size: 3.5rem;"></i>
                     </div>
                     <p class="mb-0 fs-5">Are you sure you want to delete this transaction? This action cannot be undone.</p>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                <div class="modal-footer border-0 justify-content-center">
+                    <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">
                         <i class="bi bi-x me-1"></i>Cancel
                     </button>
-                    <button type="button" class="btn btn-danger" id="confirmDelete">
+                    <button type="button" class="btn btn-danger px-4" id="confirmDelete">
                         <i class="bi bi-trash me-1"></i>Delete
                     </button>
                 </div>
@@ -328,9 +329,21 @@
                         <div class="mb-3">
                             <label for="editAmount" class="form-label">Amount</label>
                             <div class="input-group">
-                                <span class="input-group-text">$</span>
+                                <select class="form-select" name="currency" id="editCurrency" style="max-width: 100px;">
+                                    <option value="USD">USD</option>
+                                    <option value="EUR">EUR</option>
+                                    <option value="IQD">IQD</option>
+                                </select>
                                 <input type="number" class="form-control" id="editAmount" name="amount" required>
                             </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editTax" class="form-label">Tax</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-cash"></i></span>
+                                <input type="number" class="form-control" id="editTax" name="tax" step="0.01" min="0">
+                            </div>
+                            <small class="form-text text-muted">Enter tax amount in the same currency as the transaction</small>
                         </div>
                         <div class="mb-3">
                             <label for="editBankName" class="form-label">Bank</label>
@@ -338,7 +351,7 @@
                                 <option value="">Select bank</option>
                                 <% if (banks && banks.length > 0) { %>
                                     <% banks.forEach(function(bank) { %>
-                                        <option value="<%= bank %>"><%= bank %></option>
+                                        <option value="<%= bank.name %>"><%= bank.name %></option>
                                     <% }); %>
                                 <% } %>
                             </select>
@@ -349,7 +362,7 @@
                                 <option value="">Select account</option>
                                 <% if (accounts && accounts.length > 0) { %>
                                     <% accounts.forEach(function(account) { %>
-                                        <option value="<%= account %></option>
+                                        <option value="<%= account.name %>"><%= account.name %></option>
                                     <% }); %>
                                 <% } %>
                             </select>

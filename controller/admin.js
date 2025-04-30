@@ -584,7 +584,7 @@ router.post('/add-account', async (req, res) => {
             });
         }
         
-        res.redirect('/bank');
+        res.redirect('/add-account');
     } catch (error) {
         console.error('Error adding account:', error);
         const accounts = await Account.getAllAccounts() || [];
@@ -605,6 +605,118 @@ router.get('/api/accounts', async (req, res) => {
     } catch (error) {
         console.error('Error fetching accounts:', error);
         res.status(500).json({ error: error.message || 'Error fetching accounts' });
+    }
+});
+
+// Delete market route
+router.post('/delete-market', async (req, res) => {
+    try {
+        const { marketId } = req.body;
+        
+        if (!marketId) {
+            return res.status(400).json({ error: 'Market ID is required' });
+        }
+        
+        await Market.deleteMarket(marketId);
+        res.redirect('/add-market');
+    } catch (error) {
+        console.error('Error deleting market:', error);
+        return res.redirect('/add-market?error=' + encodeURIComponent(error.message || 'Failed to delete market'));
+    }
+});
+
+// Delete bank route
+router.post('/delete-bank', async (req, res) => {
+    try {
+        const { bankId } = req.body;
+        
+        if (!bankId) {
+            return res.status(400).json({ error: 'Bank ID is required' });
+        }
+        
+        await Bank.deleteBank(bankId);
+        res.redirect('/add-bank');
+    } catch (error) {
+        console.error('Error deleting bank:', error);
+        return res.redirect('/add-bank?error=' + encodeURIComponent(error.message || 'Failed to delete bank'));
+    }
+});
+
+// Delete account route
+router.post('/delete-account', async (req, res) => {
+    try {
+        const { accountId } = req.body;
+        
+        if (!accountId) {
+            return res.status(400).json({ error: 'Account ID is required' });
+        }
+        
+        await Account.deleteAccount(accountId);
+        res.redirect('/add-account');
+    } catch (error) {
+        console.error('Error deleting account:', error);
+        return res.redirect('/add-account?error=' + encodeURIComponent(error.message || 'Failed to delete account'));
+    }
+});
+
+// Add REST style DELETE routes for frontend AJAX calls
+// Delete market via DELETE method
+router.delete('/add-market/:id', async (req, res) => {
+    try {
+        const marketId = req.params.id;
+        
+        if (!marketId) {
+            return res.status(400).json({ error: 'Market ID is required' });
+        }
+        
+        await Market.deleteMarket(marketId);
+        res.json({ success: true, message: 'Market deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting market:', error);
+        return res.status(500).json({ 
+            success: false, 
+            message: error.message || 'Failed to delete market'
+        });
+    }
+});
+
+// Delete bank via DELETE method
+router.delete('/add-bank/:id', async (req, res) => {
+    try {
+        const bankId = req.params.id;
+        
+        if (!bankId) {
+            return res.status(400).json({ error: 'Bank ID is required' });
+        }
+        
+        await Bank.deleteBank(bankId);
+        res.json({ success: true, message: 'Bank deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting bank:', error);
+        return res.status(500).json({ 
+            success: false, 
+            message: error.message || 'Failed to delete bank'
+        });
+    }
+});
+
+// Delete account via DELETE method
+router.delete('/add-account/:id', async (req, res) => {
+    try {
+        const accountId = req.params.id;
+        
+        if (!accountId) {
+            return res.status(400).json({ error: 'Account ID is required' });
+        }
+        
+        await Account.deleteAccount(accountId);
+        res.json({ success: true, message: 'Account deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting account:', error);
+        return res.status(500).json({ 
+            success: false, 
+            message: error.message || 'Failed to delete account'
+        });
     }
 });
 

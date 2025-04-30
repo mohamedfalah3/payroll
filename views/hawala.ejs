@@ -7,7 +7,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/css/hawala.css">
 </head>
-<body>
+<body class="hawala-page">
     <div class="container-fluid">
         <div class="row">
             <!-- Sidebar -->
@@ -33,9 +33,9 @@
                         <% if (markets && markets.length > 0) { %>
                             <% markets.forEach(function(market) { %>
                                 <div class="col-md-3">
-                                    <div class="card market-card" data-market="<%= market %>">
+                                    <div class="card market-card" data-market="<%= typeof market === 'object' ? market.name : market %>">
                                         <div class="card-body">
-                                            <h5 class="card-title"><%= market %></h5>
+                                            <h5 class="card-title"><%= typeof market === 'object' ? market.name : market %></h5>
                                         </div>
                                     </div>
                                 </div>
@@ -52,52 +52,70 @@
                     <form id="hawalaForm" novalidate>
                         <div class="row g-4">
                             <div class="col-md-6">
-                                <label class="form-label">Account Name</label>
-                                <select class="form-select" name="accountName" required>
-                                    <option value="">Select account</option>
-                                    <% if (accounts && accounts.length > 0) { %>
-                                        <% accounts.forEach(function(account) { %>
-                                            <option value="<%= account %>"><%= account %></option>
-                                        <% }); %>
-                                    <% } %>
-                                </select>
+                                <div class="form-floating">
+                                    <input type="text" class="form-control" id="selectedMarket" name="market" readonly required placeholder=" ">
+                                    <label for="selectedMarket">Selected Market</label>
+                                </div>
+                                <% if (!markets || markets.length === 0) { %>
+                                    <small class="text-muted">No markets available. Please <a href="/add-market">add a market</a> first.</small>
+                                <% } %>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    <select class="form-select" id="accountSelect" name="accountName" required>
+                                        <option value="">Select account</option>
+                                        <% if (accounts && accounts.length > 0) { %>
+                                            <% accounts.forEach(function(account) { %>
+                                                <option value="<%= typeof account === 'object' ? account.name : account %>"><%= typeof account === 'object' ? account.name : account %></option>
+                                            <% }); %>
+                                        <% } %>
+                                    </select>
+                                    <label for="accountSelect">Account Name</label>
+                                </div>
                                 <% if (!accounts || accounts.length === 0) { %>
                                     <small class="text-muted">No accounts available. Please <a href="/add-account">add an account</a> first.</small>
                                 <% } %>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">Selected Market</label>
-                                <input type="text" class="form-control" id="selectedMarket" name="market" readonly required placeholder="Click a market card above to select">
+                                <div class="form-floating">
+                                    <input type="text" class="form-control" id="nusingaInput" name="nusinga" placeholder=" " required>
+                                    <label for="nusingaInput">Nusinga</label>
+                                </div>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">Nusinga</label>
-                                <input type="text" class="form-control" name="nusinga" placeholder="Enter nusinga" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Transaction Type</label>
-                                <select class="form-select" name="transactionType" required>
-                                    <option value="">Select transaction type</option>
-                                    <option value="send">Send Money</option>
-                                    <option value="receive">Receive Money</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Amount</label>
-                                <div class="input-group">
-                                    <select class="form-select" name="currency" style="max-width: 100px;" required>
-                                        <option value="USD" selected>USD</option>
-                                        <option value="EUR">EUR</option>
-                                        <option value="IQD">IQD</option>
+                                <div class="form-floating">
+                                    <select class="form-select" id="transactionTypeSelect" name="transactionType" required>
+                                        <option value="">Select transaction type</option>
+                                        <option value="send">Send Money</option>
+                                        <option value="receive">Receive Money</option>
                                     </select>
-                                    <input type="number" class="form-control" name="amount" placeholder="Enter amount" required>
+                                    <label for="transactionTypeSelect">Transaction Type</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="input-group">
+                                    <div class="form-floating" style="max-width: 130px;">
+                                        <select class="form-select" id="currencySelect" name="currency" required>
+                                            <option value="USD" selected>USD</option>
+                                            <option value="EUR">EUR</option>
+                                            <option value="IQD">IQD</option>
+                                        </select>
+                                        <label for="currencySelect">Currency</label>
+                                    </div>
+                                    <div class="form-floating flex-grow-1">
+                                        <input type="number" class="form-control" id="amountInput" name="amount" placeholder=" " required>
+                                        <label for="amountInput">Amount</label>
+                                    </div>
                                 </div>
                             </div>
                             <div class="col-12">
-                                <label class="form-label">Transfer Description</label>
-                                <textarea class="form-control" name="purpose" rows="3" placeholder="Enter purpose of transfer" required></textarea>
+                                <div class="form-floating">
+                                    <textarea class="form-control" id="purposeTextarea" name="purpose" rows="3" placeholder=" " style="min-height: 100px;" required></textarea>
+                                    <label for="purposeTextarea">Transfer Description</label>
+                                </div>
                             </div>
-                            <div class="col-12">
-                                <button type="submit" class="btn btn-primary w-100">Process Hawala Transfer</button>
+                            <div class="col-12 mt-4">
+                                <button type="submit" class="btn btn-primary w-100 py-3">Process Hawala Transfer</button>
                             </div>
                         </div>
                     </form>
