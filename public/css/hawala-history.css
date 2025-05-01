@@ -658,11 +658,27 @@ h1 {
 
 .filters-wrapper {
     display: flex;
-    align-items: center; /* Changed from flex-start to center */
-    flex-direction: row; /* Ensure horizontal layout */
-    gap: 15px;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
     justify-content: center;
-    flex-wrap: nowrap; /* Prevent wrapping to ensure items stay in one line */
+    width: 100%;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 320px;
+    gap: 0.5rem;
+}
+
+.filter-group input,
+.filter-group select,
+.filter-group .clear-btn {
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .date-input {
@@ -692,6 +708,12 @@ h1 {
     font-weight: 500;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     margin-left: 10px;
+    align-self: flex-end;
+    margin-left: 0 !important;
+    margin-top: 0.5rem;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
 }
 
 .clear-btn:hover {
@@ -799,18 +821,18 @@ td .d-flex {
 
 .filter-group {
     display: flex;
-    align-items: center;
-    gap: 10px;
-    min-width: 250px;
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    max-width: 320px;
+    gap: 0.5rem;
 }
 
-.filters-wrapper {
-    display: flex;
-    align-items: center; /* Changed from flex-start to center */
-    flex-direction: row; /* Ensure horizontal layout */
-    gap: 15px;
-    justify-content: center;
-    flex-wrap: nowrap; /* Prevent wrapping to ensure items stay in one line */
+.filter-group input,
+.filter-group select,
+.filter-group .clear-btn {
+    width: 100%;
+    box-sizing: border-box;
 }
 
 @media (max-width: 768px) {
@@ -854,7 +876,7 @@ td .d-flex {
 }
 
 /* Responsive sidebar styles */
-@media (max-width: 992px) {
+@media (max-width: 1100px) {
     .sidebar {
         width: 100%;
         height: auto;
@@ -880,13 +902,14 @@ td .d-flex {
         display: flex;
         justify-content: center;
         flex-wrap: wrap;
-        gap: 0.75rem;
+        gap: 1.5rem 0; /* Only horizontal gap */
         padding: 0.5rem;
+        width: 100%;
     }
 
     .sidebar a {
         padding: 0.65rem 1.25rem;
-        margin: 0;
+        margin: 0rem 0rem 2.3rem 0.5rem; /* horizontal margin for spacing, small bottom margin for row spacing */
         border-radius: 8px;
         display: inline-flex;
         align-items: center;
@@ -900,6 +923,18 @@ td .d-flex {
         background-color: rgba(255, 255, 255, 0.2);
         box-shadow: 0 3px 5px rgba(0, 0, 0, 0.15);
         transform: translateY(-2px);
+    }
+
+    .sidebar a:last-child {
+        margin-bottom: 0;
+        margin-right: 0;
+    }
+
+    .sidebar nav .sidebar a:nth-last-child(-n+3) {
+        margin-left: auto;
+        margin-right: auto;
+        display: block;
+        text-align: center;
     }
 
     .main-content {
@@ -1148,4 +1183,441 @@ td .d-flex {
 
 .mb-3.no-print .btn i {
     font-size: 1.1rem;
+}
+
+.table th, .table td {
+    padding-left: 2.5rem !important;
+    padding-right: 2.5rem !important;
+}
+
+@media (min-width: 768px) and (max-width: 1100px) {
+    .main-content {
+        margin-left: 0;
+        padding: 2rem 1rem;
+        max-width: 100vw;
+    }
+    .history-container {
+        margin: 1.5rem 0;
+        border-radius: 14px;
+        overflow-x: auto;
+        min-width: 0;
+        max-width: 100vw;
+    }
+    .table-responsive {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    .table {
+        min-width: 700px;
+        font-size: 1em;
+    }
+    .table th, .table td {
+        padding: 1rem 0.75rem;
+        font-size: 1em;
+    }
+    .filters-wrapper {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 12px;
+        justify-content: center;
+    }
+    .filter-group, .date-input, .market-select {
+        min-width: 180px;
+        max-width: 300px;
+        font-size: 1em;
+    }
+    .pagination .page-link {
+        padding: 0.5rem 1rem;
+        font-size: 1em;
+    }
+    .summary-box {
+        padding: 1.2rem;
+        font-size: 1em;
+    }
+    .summary-icon {
+        width: 55px;
+        height: 55px;
+        font-size: 1.5rem;
+    }
+}
+
+@media (min-width: 770px) and (max-width: 1100px) {
+  .filters-wrapper {
+    flex-direction: row;
+    gap: 15px;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: nowrap;
+  }
+  .filter-group {
+    flex-direction: row;
+    width: auto;
+    min-width: 180px;
+    max-width: 300px;
+    align-items: center;
+    margin-bottom: 0;
+  }
+  .market-select, .date-input {
+    width: auto;
+    min-width: 180px;
+    max-width: 300px;
+    margin-bottom: 0;
+  }
+  .clear-btn {
+    width: auto;
+    min-width: 100px;
+    margin-left: 10px;
+    margin-top: 0;
+  }
+}
+
+/* Decrease space between specific columns for responsiveness (hawala-history) */
+@media (max-width: 1100px) {
+  .table th:nth-child(1), .table td:nth-child(1), /* date */
+  .table th:nth-child(2), .table td:nth-child(2), /* market */
+  .table th:nth-child(3), .table td:nth-child(3), /* account */
+  .table th:nth-child(4), .table td:nth-child(4), /* amount */
+  .table th:nth-child(5), .table td:nth-child(5), /* type */
+  .table th:nth-child(6), .table td:nth-child(6), /* description */
+  .table th:nth-child(7), .table td:nth-child(7), /* status */
+  .table th:nth-child(8), .table td:nth-child(8)  /* delete/edit */
+  {
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+  }
+}
+@media (max-width: 768px) {
+  .table th:nth-child(1), .table td:nth-child(1),
+  .table th:nth-child(2), .table td:nth-child(2),
+  .table th:nth-child(3), .table td:nth-child(3),
+  .table th:nth-child(4), .table td:nth-child(4),
+  .table th:nth-child(5), .table td:nth-child(5),
+  .table th:nth-child(6), .table td:nth-child(6),
+  .table th:nth-child(7), .table td:nth-child(7),
+  .table th:nth-child(8), .table td:nth-child(8)  {
+    padding-left: 0.35rem !important;
+    padding-right: 0.35rem !important;
+  }
+}
+@media (max-width: 576px) {
+  .table th:nth-child(1), .table td:nth-child(1),
+  .table th:nth-child(2), .table td:nth-child(2),
+  .table th:nth-child(3), .table td:nth-child(3),
+  .table th:nth-child(4), .table td:nth-child(4),
+  .table th:nth-child(5), .table td:nth-child(5),
+  .table th:nth-child(6), .table td:nth-child(6),
+  .table th:nth-child(7), .table td:nth-child(7),
+  .table th:nth-child(8), .table td:nth-child(8)  {
+    padding-left: 0.15rem !important;
+    padding-right: 0.15rem !important;
+  }
+}
+/* Center the text in the Type column */
+.table td:nth-child(5) {
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .filters-wrapper {
+    flex-direction: column;
+    gap: 10px;
+    align-items: stretch;
+  }
+  .filter-group {
+    flex-direction: column;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    align-items: stretch;
+    margin-bottom: 0.5rem;
+  }
+  .market-select, .date-input {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    margin-bottom: 0.5rem;
+  }
+  .clear-btn {
+    width: 100%;
+    min-width: 0;
+    margin-left: 0;
+    margin-top: 0.5rem;
+  }
+}
+@media (max-width: 576px) {
+  .filters-wrapper {
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+  }
+  .filter-group {
+    flex-direction: column;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    align-items: stretch;
+    margin-bottom: 0.5rem;
+  }
+  .market-select, .date-input {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    margin-bottom: 0.5rem;
+  }
+  .clear-btn {
+    width: 100%;
+    min-width: 0;
+    margin-left: 0;
+    margin-top: 0.5rem;
+  }
+}
+@media (max-width: 1100px) {
+  .filters-wrapper {
+    flex-direction: column;
+    gap: 10px;
+    align-items: stretch;
+  }
+  .filter-group {
+    flex-direction: column;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    align-items: stretch;
+    margin-bottom: 0.5rem;
+  }
+  .market-select, .date-input, #dateFilter, #marketFilter {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    margin-bottom: 0.5rem;
+    box-sizing: border-box;
+    display: block;
+  }
+  .clear-btn {
+    width: 100%;
+    min-width: 0;
+    margin-left: 0;
+    margin-top: 0.5rem;
+  }
+}
+
+@media (max-width: 1100px) {
+  .market-select, .date-input, #dateFilter, #marketFilter {
+    min-width: 120px !important;
+    max-width: 180px !important;
+    width: 100% !important;
+    margin-bottom: 0.5rem;
+    box-sizing: border-box;
+    display: block;
+  }
+}
+@media (max-width: 768px) {
+  .market-select, .date-input, #dateFilter, #marketFilter {
+    min-width: 120px !important;
+    max-width: 180px !important;
+    width: 100% !important;
+    margin-bottom: 0.5rem;
+    box-sizing: border-box;
+    display: block;
+  }
+}
+@media (max-width: 576px) {
+  .market-select, .date-input, #dateFilter, #marketFilter {
+    min-width: 120px !important;
+    max-width: 180px !important;
+    width: 100% !important;
+    margin-bottom: 0.5rem;
+    box-sizing: border-box;
+    display: block;
+  }
+}
+@media (max-width: 1100px) {
+  .market-select, .date-input, #dateFilter, #marketFilter, .clear-btn, .filters-wrapper .btn {
+    min-width: 140px !important;
+    max-width: 180px !important;
+    width: 100% !important;
+    margin-bottom: 0.5rem;
+    box-sizing: border-box;
+    display: block;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+}
+@media (max-width: 768px) {
+  .market-select, .date-input, #dateFilter, #marketFilter, .clear-btn, .filters-wrapper .btn {
+    min-width: 500px !important;
+    max-width: 501px !important;
+    width: 100% !important;
+    margin-bottom: 0.5rem;
+    box-sizing: border-box;
+    display: block;
+  }
+}
+@media (max-width: 576px) {
+  .market-select, .date-input, #dateFilter, #marketFilter, .clear-btn, .filters-wrapper .btn {
+    min-width: 100% !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    margin-bottom: 0.5rem;
+    box-sizing: border-box;
+    display: block;
+  }
+}
+
+@media (max-width: 1100px), (max-width: 768px), (max-width: 576px) {
+  .filters-wrapper {
+    justify-content: center !important;
+    align-items: center !important;
+  }
+  .filter-group {
+    align-items: center !important;
+  }
+  .market-select, .date-input, #dateFilter, #marketFilter, .clear-btn, .filters-wrapper .btn {
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+}
+@media (max-width: 1100px) {
+  .market-select, .date-input, #dateFilter, #marketFilter, .clear-btn, .filters-wrapper .btn {
+    min-width: 180px !important;
+    max-width: 250px !important;
+    width: 100% !important;
+    margin-bottom: 0.5rem;
+    box-sizing: border-box;
+    display: block;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+}
+
+@media (max-width: 1100px) {
+  .market-select, .date-input, #dateFilter, #marketFilter, .clear-btn, .filters-wrapper .btn {
+    min-width: 120px !important;
+    max-width: 150px !important;
+    width: 100% !important;
+    margin-bottom: 0.5rem;
+    box-sizing: border-box;
+    display: block;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+}
+
+@media (max-width: 1100px) {
+  .market-select, .date-input, #dateFilter, #marketFilter, .clear-btn, .filters-wrapper .btn {
+    min-width: 140px !important;
+    max-width: 180px !important;
+    width: 100% !important;
+    margin-bottom: 0.5rem;
+    box-sizing: border-box;
+    display: block;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+}
+
+@media (max-width: 1100px) {
+  .market-select, .date-input, #dateFilter, #marketFilter, .clear-btn, .filters-wrapper .btn {
+    min-width: 150px !important;
+    max-width: 200px !important;
+    width: 100% !important;
+    margin-bottom: 0.5rem;
+    box-sizing: border-box;
+    display: block;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+}
+
+@media (max-width: 1100px) {
+  .market-select, .date-input, #dateFilter, #marketFilter, .clear-btn, .filters-wrapper .btn {
+    min-width: 82% !important;
+    max-width: 82% !important;
+    width: 82% !important;
+    margin-bottom: 0.5rem;
+    box-sizing: border-box;
+    display: block;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    
+  }
+  
+}
+
+.filter-panel {
+  background: var(--bs-light, #f8f9fa);
+  border-radius: 1.5rem;
+  box-shadow: 0 4px 24px rgba(37,99,235,0.07), 0 1.5px 4px rgba(0,0,0,0.03);
+  border: none;
+  margin-bottom: 2rem;
+}
+.filter-panel label {
+  color: #1e293b;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+.filter-panel .form-select,
+.filter-panel .form-control {
+  border-radius: 2rem !important;
+  border: 1.5px solid #e2e8f0;
+  font-size: 1.1rem;
+  background: #fff;
+  box-shadow: none;
+  transition: border-color 0.2s;
+  height: 48px !important;
+  min-height: 48px !important;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+.filter-panel .form-select:focus,
+.filter-panel .form-control:focus {
+  border-color: var(--primary-color, #2563eb);
+  box-shadow: 0 0 0 2px rgba(37,99,235,0.10);
+}
+.filter-panel .input-group {
+  flex-wrap: nowrap;
+}
+.filter-panel .btn {
+  border-radius: 2rem !important;
+  font-size: 1.05rem;
+  font-weight: 500;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.filter-panel .btn-outline-secondary {
+  border: 1.5px solid #e2e8f0;
+  color: #64748b;
+  background: #fff;
+}
+.filter-panel .btn-outline-secondary:hover {
+  background: #f1f5f9;
+  color: #2563eb;
+}
+.filter-panel .btn-light {
+  background: #f8fafc;
+  color: #334155;
+  border: 1.5px solid #e2e8f0;
+}
+.filter-panel .btn-light:hover {
+  background: #e0e7ef;
+  color: #2563eb;
+}
+@media (max-width: 768px) {
+  .filter-panel .row > div {
+    margin-bottom: 1rem;
+  }
+  .filter-panel .form-select,
+  .filter-panel .form-control {
+    margin-left: 10px !important;
+  }
+}
+
+.filter-panel .input-group > .form-select,
+.filter-panel .input-group > .form-control {
+  margin-right: 24px !important;
+}
+.filter-panel .input-group > .btn {
+  margin-left: 0 !important;
+  margin-right: 16px !important;
 }

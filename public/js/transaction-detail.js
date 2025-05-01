@@ -72,7 +72,14 @@ function showEditModal(event, transactionData) {
                     option.selected = (option.value === transaction.bankName);
                 });
             }
-            
+            // Set currency for bank
+            if (document.getElementById('editCurrency')) {
+                document.getElementById('editCurrency').value = transaction.currency || 'USD';
+            }
+            // Set tax for bank
+            if (document.getElementById('editTax')) {
+                document.getElementById('editTax').value = transaction.tax || '';
+            }
             if (document.getElementById('editDescription')) {
                 document.getElementById('editDescription').value = transaction.description || '';
             }

@@ -88,32 +88,35 @@
                     </button>
                 </div>
 
-                <div class="date-filter">
-                    <div class="text-center d-flex justify-content-center w-100">
-                        <div class="filter-container">
-                            <label class="filter-label">View Transactions by Date</label>
-                            <div class="filters-wrapper">
-                                <div class="filter-group">
-                                    <select id="bankFilter" class="form-control bank-select">
-                                        <option value="">All Banks</option>
-                                        <% for(let bank of banks) { %>
-                                            <option value="<%= bank.name %>"><%= bank.name %></option>
-                                        <% } %>
-                                    </select>
-                                    <button class="btn clear-btn" onclick="clearBankFilter()">
-                                        <i class="bi bi-x-circle"></i> Clear Bank
-                                    </button>
-                                </div>
-                                <div class="filter-group">
-                                    <input type="text" id="dateFilter" class="form-control date-input" placeholder="Select a date" readonly="readonly" style="cursor: pointer;">
-                                    <button class="btn clear-btn" onclick="clearDateFilter()">
-                                        <i class="bi bi-x-circle"></i> Clear Date
-                                    </button>
-                                </div>
+                <!-- Redesigned Filter Panel Start -->
+                <div class="filter-panel card shadow-sm mb-4 p-3 p-md-4 border-0">
+                    <div class="row g-3 align-items-end justify-content-center">
+                        <div class="col-12 col-md-5 col-lg-4">
+                            <label for="bankFilter" class="form-label fw-semibold mb-1"><i class="bi bi-bank2 me-2"></i>Bank</label>
+                            <div class="input-group">
+                                <select id="bankFilter" class="form-select form-select-lg rounded-pill px-4 py-2 bank" >
+                                    <option value="">All Banks</option>
+                                    <% for(let bank of banks) { %>
+                                        <option value="<%= bank.name %>"><%= bank.name %></option>
+                                    <% } %>
+                                </select>
+                                <button class="btn btn-outline-secondary rounded-pill ms-2 px-3 py-2" onclick="clearBankFilter()" type="button" title="Clear Bank">
+                                    <i class="bi bi-x-circle"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-5 col-lg-4">
+                            <label for="dateFilter" class="form-label fw-semibold mb-1"><i class="bi bi-calendar-event me-2"></i>Date</label>
+                            <div class="input-group">
+                                <input type="text" id="dateFilter" style="margin-left: 20px;" class="form-control form-control-lg rounded-pill px-4 py-2" readonly="readonly" style="cursor: pointer;">
+                                <button class="btn btn-outline-secondary rounded-pill ms-2 px-3 py-2" onclick="clearDateFilter()" type="button" title="Clear Date">
+                                    <i class="bi bi-x-circle"></i>
+                                </button>
                             </div>
                         </div>
                     </div>
                 </div>
+                <!-- Redesigned Filter Panel End -->
 
                 <div class="transaction-summary">
                     <div class="row">
@@ -152,7 +155,7 @@
                                 <th style="font-weight: 500;">Bank</th>
                                 <th style="font-weight: 500;">Account</th>
                                 <th style="font-weight: 500;">Amount</th>
-                                <th style="font-size: 0.9em;font-weight: 500;">Type</th>
+                                <th style="font-size: 0.9em;font-weight: 500; text-align: center;" class="type">Type</th>
                                 <th style="font-weight: 500;">Description</th>
                                 <th style="font-weight: 500;">Status</th>
                                 <th style="font-weight: 500;">Edit/Delete</th>

@@ -67,12 +67,23 @@
                         <div class="detail-row">
                             <div class="detail-label">Amount</div>
                             <div class="detail-value">
-                                <% if (transaction.currency === 'IQD') { %>
-                                    IQD <%= Number(transaction.amount).toLocaleString() %>
-                                <% } else if (transaction.currency === 'EUR') { %>
-                                    €<%= Number(transaction.amount).toLocaleString() %>
+                                <% if (transaction.type === 'bank') { %>
+                                    <% const afterTax = Number(transaction.amount) - Number(transaction.tax || 0); %>
+                                    <% if (transaction.currency === 'IQD') { %>
+                                        IQD <%= afterTax.toLocaleString() %>
+                                    <% } else if (transaction.currency === 'EUR') { %>
+                                        €<%= afterTax.toLocaleString() %>
+                                    <% } else { %>
+                                        $<%= afterTax.toLocaleString() %>
+                                    <% } %>
                                 <% } else { %>
-                                    $<%= Number(transaction.amount).toLocaleString() %>
+                                    <% if (transaction.currency === 'IQD') { %>
+                                        IQD <%= Number(transaction.amount).toLocaleString() %>
+                                    <% } else if (transaction.currency === 'EUR') { %>
+                                        €<%= Number(transaction.amount).toLocaleString() %>
+                                    <% } else { %>
+                                        $<%= Number(transaction.amount).toLocaleString() %>
+                                    <% } %>
                                 <% } %>
                             </div>
                         </div>
@@ -250,12 +261,20 @@
                                         <option value="IQD">IQD</option>
                                     </select>
                                 <% } else { %>
-                                    <span class="input-group-text">$</span>
+                                    <select class="form-select" name="currency" id="editCurrency" style="max-width: 100px;" required>
+                                        <option value="USD">USD</option>
+                                        <option value="EUR">EUR</option>
+                                        <option value="IQD">IQD</option>
+                                    </select>
                                 <% } %>
                                 <input type="number" class="form-control" id="editAmount" name="amount" required>
                             </div>
                         </div>
                         <% if (transaction.type === 'bank') { %>
+                            <div class="mb-3">
+                                <label for="editTax" class="form-label">Tax</label>
+                                <input type="number" class="form-control" id="editTax" name="tax" min="0" step="0.01" value="<%= transaction.tax || '' %>" placeholder="0.00">
+                            </div>
                             <div class="mb-3">
                                 <label for="editBankName" class="form-label">Bank Name</label>
                                 <select class="form-select" id="editBankName" name="bankName" required>

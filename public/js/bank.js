@@ -45,6 +45,36 @@ function setupEventListeners() {
 
         // Set up form submit listener
         bankForm?.addEventListener('submit', handleFormSubmit);
+
+        // Add ripple animation to submit button on click (same as hawala page)
+        const submitBtn = document.querySelector('#bankForm button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.addEventListener('click', function(e) {
+                // Remove any existing ripple
+                const oldRipple = this.querySelector('.ripple-effect');
+                if (oldRipple) oldRipple.remove();
+                // Create ripple
+                const ripple = document.createElement('span');
+                ripple.className = 'ripple-effect';
+                ripple.style.position = 'absolute';
+                ripple.style.left = `${e.offsetX}px`;
+                ripple.style.top = `${e.offsetY}px`;
+                ripple.style.width = ripple.style.height = Math.max(this.offsetWidth, this.offsetHeight) + 'px';
+                ripple.style.background = 'rgba(255,255,255,0.5)';
+                ripple.style.borderRadius = '50%';
+                ripple.style.transform = 'translate(-50%, -50%) scale(0)';
+                ripple.style.opacity = '0.75';
+                ripple.style.pointerEvents = 'none';
+                ripple.style.transition = 'transform 0.6s cubic-bezier(0.4,0,0.2,1), opacity 0.6s';
+                ripple.classList.add('ripple-animate');
+                this.appendChild(ripple);
+                setTimeout(() => {
+                    ripple.style.transform = 'translate(-50%, -50%) scale(2.5)';
+                    ripple.style.opacity = '0';
+                }, 10);
+                setTimeout(() => ripple.remove(), 650);
+            });
+        }
     } catch (error) {
         console.error('Error setting up event listeners:', error);
     }
