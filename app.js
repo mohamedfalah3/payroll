@@ -108,41 +108,56 @@ app.get('/login', (req, res) => {
     });
 });
 
-// Login POST handler
-app.post('/login', (req, res) => {
-    const { username, password } = req.body;
+// Login POST handler - Updated for Firebase Authentication
+app.post('/login', async (req, res) => {
+    const { email, password } = req.body;
     
     // Validate request
-    if (!username || !password) {
-        req.flash('error', 'Username and password are required');
+    if (!email || !password) {
+        req.flash('error', 'Email and password are required');
         return res.redirect('/login');
     }
     
-    // Authenticate user
-    const user = auth.authenticateUser(username, password);
-    
-    if (!user) {
-        req.flash('error', 'Invalid username or password');
+    try {
+        // Authenticate user with Firebase
+        const user = await auth.authenticateUser(email, password);
+        
+        if (!user) {
+            req.flash('error', 'Invalid email or password');
+            return res.redirect('/login');
+        }
+        
+        // Save user in session
+        req.session.user = user;
+        
+        // Ensure session is saved before redirect
+        req.session.save(() => {
+            // Redirect to original URL or appropriate page based on permissions
+            const returnTo = req.session.returnTo || auth.getDefaultPageForUser(user);
+            delete req.session.returnTo;
+            res.redirect(returnTo);
+        });
+    } catch (error) {
+        console.error("Login error:", error);
+        req.flash('error', 'Login failed. Please try again.');
         return res.redirect('/login');
     }
-    
-    // Save user in session
-    req.session.user = user;
-    
-    // Ensure session is saved before redirect
-    req.session.save(() => {
-        // Redirect to original URL or appropriate page based on permissions
-        const returnTo = req.session.returnTo || auth.getDefaultPageForUser(user);
-        delete req.session.returnTo;
-        res.redirect(returnTo);
-    });
 });
 
-// Logout route
-app.get('/logout', (req, res) => {
-    req.session.destroy(() => {
-        res.redirect('/login');
-    });
+// Logout route - Updated for Firebase
+app.get('/logout', async (req, res) => {
+    try {
+        // Logout from Firebase
+        await auth.logoutUser();
+        
+        // Destroy session
+        req.session.destroy(() => {
+            res.redirect('/login');
+        });
+    } catch (error) {
+        console.error("Logout error:", error);
+        res.redirect('/');
+    }
 });
 
 // Root route redirects to login or appropriate page based on permissions

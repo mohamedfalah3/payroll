@@ -1,47 +1,33 @@
-// auth.js middleware for user authentication
-const crypto = require('crypto');
+// auth.js middleware for user authentication using Firebase
+const { 
+    signInWithEmailAndPassword, 
+    signOut,
+    onAuthStateChanged
+} = require('firebase/auth');
+const { doc, getDoc } = require('firebase/firestore');
+const firebase = require('../config/firebase');
 
-// Define our hardcoded users with their permissions
-const users = [
-    {
-        id: 1,
-        username: 'mahamad',
-        password: 'Mahamad100%',
-        role: 'admin',
-        permissions: ['bank', 'hawala', 'add-market', 'add-bank', 'add-account'] // Full access
-    },
-    {
-        id: 2,
-        username: 'roman',
-        password: 'roman100%',
-        role: 'bank-manager',
-        permissions: ['bank'] // Only bank management
-    },
-    {
-        id: 3,
-        username: 'ari',
-        password: 'ari100%',
-        role: 'hawala-manager',
-        permissions: ['hawala'] // Only hawala management
-    },
-    {
-        id: 4,
-        username: 'yusif',
-        password: 'yusif100%',
-        role: 'data-entry',
-        permissions: ['add-market', 'add-bank', 'add-account'] // Only add pages
-    },
-    {
-        id: 5,
-        username: 'omar',
-        password: 'omar100%',
-        role: 'bank-hawala-manager',
-        permissions: ['bank', 'hawala'] // Both bank and hawala management
-    }
-];
+// Default user roles and permissions mapping
+const defaultPermissions = {
+    admin: ['bank', 'hawala', 'add-market', 'add-bank', 'add-account'],
+    'bank-manager': ['bank'],
+    'hawala-manager': ['hawala'],
+    'data-entry': ['add-market', 'add-bank', 'add-account'],
+    'bank-hawala-manager': ['bank', 'hawala']
+};
+
+// Map emails to their default roles (for initial setup)
+// In production, you would manage this in Firestore
+const userRoleMapping = {
+    'mahamad@example.com': 'admin',
+    'roman@example.com': 'bank-manager',
+    'ari@example.com': 'hawala-manager',
+    'yusif@example.com': 'data-entry',
+    'omar@example.com': 'bank-hawala-manager'
+};
 
 // Check if user is logged in
-const isAuthenticated = (req, res, next) => {
+const isAuthenticated = async (req, res, next) => {
     // If user is authenticated, proceed to next middleware
     if (req.session && req.session.user) {
         return next();
@@ -104,19 +90,58 @@ const hasAccess = (permission) => {
     };
 };
 
-// Authenticate user function
-const authenticateUser = (username, password) => {
-    // Find user by username (case insensitive)
-    const user = users.find(user => user.username.toLowerCase() === username.toLowerCase());
-    
-    // Check if user exists and password matches
-    if (user && user.password === password) {
-        // Return user without password
-        const { password, ...userWithoutPassword } = user;
-        return userWithoutPassword;
+// Authenticate user with Firebase
+const authenticateUser = async (email, password) => {
+    try {
+        // Attempt to sign in with Firebase Authentication
+        const userCredential = await signInWithEmailAndPassword(firebase.auth, email, password);
+        const firebaseUser = userCredential.user;
+
+        // Get user role and permissions from Firestore 
+        // Or fallback to default mapping for initial setup
+        let role = userRoleMapping[email] || 'user';
+        let permissions = [];
+        
+        try {
+            // Try to get user data from Firestore
+            const userDoc = await getDoc(doc(firebase.db, "users", firebaseUser.uid));
+            if (userDoc.exists()) {
+                const userData = userDoc.data();
+                role = userData.role || role;
+                permissions = userData.permissions || defaultPermissions[role] || [];
+            } else {
+                // If user document doesn't exist in Firestore yet, use default permissions
+                permissions = defaultPermissions[role] || [];
+            }
+        } catch (error) {
+            console.error("Error getting user data from Firestore:", error);
+            // Fallback to default permissions if Firestore fails
+            permissions = defaultPermissions[role] || [];
+        }
+        
+        // Return the user object for session storage
+        return {
+            id: firebaseUser.uid,
+            email: firebaseUser.email,
+            displayName: firebaseUser.displayName || email.split('@')[0],
+            role,
+            permissions
+        };
+    } catch (error) {
+        console.error("Authentication failed:", error);
+        return null;
     }
-    
-    return null;
+};
+
+// Logout user from Firebase
+const logoutUser = async () => {
+    try {
+        await signOut(firebase.auth);
+        return true;
+    } catch (error) {
+        console.error("Logout failed:", error);
+        return false;
+    }
 };
 
 // Add user data to all responses
@@ -130,6 +155,7 @@ module.exports = {
     isAuthenticated,
     hasAccess,
     authenticateUser,
+    logoutUser,
     addUserToLocals,
-    getDefaultPageForUser  // Export this function so it can be used in app.js
+    getDefaultPageForUser
 };
