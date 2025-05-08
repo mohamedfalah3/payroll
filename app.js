@@ -19,15 +19,16 @@ app.use(session({
     resave: true, // Changed to true for better compatibility with Vercel
     saveUninitialized: true,
     cookie: {
-        // Only use secure cookies if in production AND using HTTPS
-        secure: process.env.NODE_ENV === 'production' ? false : false,
+        // Disable secure cookies for now to ensure they work in all environments
+        secure: false,
         // Standard cookie settings
         httpOnly: true,
         // Session expires after 2 hours of inactivity
         maxAge: 2 * 60 * 60 * 1000,
-        // Using 'none' instead of 'lax' for broader compatibility
-        sameSite: 'none'
-    }
+        // Using 'lax' for broader compatibility
+        sameSite: 'lax'
+    },
+    name: 'payroll_session' // Set a specific name for the session cookie
 }));
 app.use(flash());
 
@@ -36,6 +37,10 @@ app.use((req, res, next) => {
     const sessionInfo = req.session ? 'Session exists' : 'No session';
     const userInfo = req.session && req.session.user ? `User ID: ${req.session.user.id}` : 'No user';
     console.log(`Request path: ${req.path}, ${sessionInfo}, ${userInfo}`);
+    // Set session cookie explicitly on every request
+    if (req.session) {
+        req.session.touch();
+    }
     next();
 });
 
@@ -119,7 +124,7 @@ app.get('/login', (req, res) => {
     });
 });
 
-// Login POST handler - Updated for Firebase Authentication with improved error handling
+// Login POST handler - Updated for Firebase Authentication with improved error handling and session persistence
 app.post('/login', async (req, res) => {
     console.log('Login attempt received');
     
@@ -147,6 +152,10 @@ app.post('/login', async (req, res) => {
         
         // Save user in session
         req.session.user = user;
+        // Set a flag to ensure the session was set
+        req.session.authenticated = true;
+        // Add a timestamp
+        req.session.authTimestamp = Date.now();
         
         // Force session save and handle redirect
         req.session.save((err) => {
@@ -156,11 +165,23 @@ app.post('/login', async (req, res) => {
                 return res.redirect('/login');
             }
             
+            // Additional debugging to check if session was saved properly
+            console.log(`Session saved with user ID: ${req.session.user.id}`);
+            
             // Redirect to original URL or appropriate page based on permissions
             const returnTo = req.session.returnTo || auth.getDefaultPageForUser(user);
             delete req.session.returnTo;
             
             console.log(`Login successful, redirecting to: ${returnTo}`);
+            
+            // Set a cookie to track login state as backup
+            res.cookie('user_logged_in', 'true', { 
+                maxAge: 2 * 60 * 60 * 1000,
+                httpOnly: true,
+                secure: false,
+                sameSite: 'lax'
+            });
+            
             return res.redirect(returnTo);
         });
     } catch (error) {
@@ -176,6 +197,9 @@ app.get('/logout', async (req, res) => {
         console.log('Logout requested');
         // Logout from Firebase
         await auth.logoutUser();
+        
+        // Clear the backup cookie
+        res.clearCookie('user_logged_in');
         
         // Destroy session
         req.session.destroy((err) => {

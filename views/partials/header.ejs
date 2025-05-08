@@ -10,4 +10,6 @@
     <% if (locals.cssFile) { %>
     <link rel="stylesheet" href="/css/<%= cssFile %>">
     <% } %>
+    <!-- Session helper script for better auth handling in serverless environments -->
+    <script src="/js/session-helper.js"></script>
 </head>
