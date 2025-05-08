@@ -68,4 +68,85 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
     });
+
+    const navToggler = document.querySelector('.toggler-btn');
+    const navMenu = document.querySelector('.sidebar nav');
+    
+    if (navToggler && navMenu) {
+        // Add toggle functionality for mobile navigation
+        navToggler.addEventListener('click', function() {
+            navMenu.classList.toggle('show');
+            // Change icon based on menu state
+            const icon = navToggler.querySelector('i');
+            if (icon) {
+                if (navMenu.classList.contains('show')) {
+                    icon.classList.remove('bi-list');
+                    icon.classList.add('bi-x-lg');
+                } else {
+                    icon.classList.remove('bi-x-lg');
+                    icon.classList.add('bi-list');
+                }
+            }
+        });
+        
+        // Close menu when a link is clicked
+        const navLinks = navMenu.querySelectorAll('a');
+        navLinks.forEach(link => {
+            link.addEventListener('click', function() {
+                // Only close if on mobile (window width < 1100px)
+                if (window.innerWidth < 1100) {
+                    navMenu.classList.remove('show');
+                    // Reset icon
+                    const icon = navToggler.querySelector('i');
+                    if (icon) {
+                        icon.classList.remove('bi-x-lg');
+                        icon.classList.add('bi-list');
+                    }
+                }
+            });
+        });
+        
+        // Close menu when clicking outside
+        document.addEventListener('click', function(event) {
+            // Only if we're on mobile and the menu is open
+            if (window.innerWidth < 1100 && navMenu.classList.contains('show')) {
+                // Check if the click was outside the sidebar
+                let targetElement = event.target;
+                let isClickInside = false;
+                
+                while (targetElement != null) {
+                    if (targetElement.classList && 
+                        (targetElement.classList.contains('sidebar') || 
+                         targetElement.classList.contains('toggler-btn'))) {
+                        isClickInside = true;
+                        break;
+                    }
+                    targetElement = targetElement.parentElement;
+                }
+                
+                if (!isClickInside) {
+                    navMenu.classList.remove('show');
+                    // Reset icon
+                    const icon = navToggler.querySelector('i');
+                    if (icon) {
+                        icon.classList.remove('bi-x-lg');
+                        icon.classList.add('bi-list');
+                    }
+                }
+            }
+        });
+        
+        // Adjust menu visibility when resizing the window
+        window.addEventListener('resize', function() {
+            if (window.innerWidth >= 1100) {
+                navMenu.classList.remove('show');
+                // Reset icon
+                const icon = navToggler.querySelector('i');
+                if (icon) {
+                    icon.classList.remove('bi-x-lg');
+                    icon.classList.add('bi-list');
+                }
+            }
+        });
+    }
 });

@@ -4,6 +4,10 @@ let selectedBankInput;
 let bankForm;
 
 document.addEventListener('DOMContentLoaded', function() {
+    // Check if we're on the bank page
+    const isBankPage = document.querySelector('.bank-page');
+    if (!isBankPage) return;
+
     // Initialize elements
     initializeElements();
     // Sort bank cards alphabetically by bank name
@@ -16,169 +20,304 @@ document.addEventListener('DOMContentLoaded', function() {
     if (table) {
         table.classList.add('deep-blue-table');
     }
-});
 
-function initializeElements() {
-    try {
-        bankCards = document.querySelectorAll('.bank-card');
-        selectedBankInput = document.querySelector('input[name="bankName"]');
-        bankForm = document.getElementById('bankForm');
-
-        if (!selectedBankInput) {
-            console.error('Bank input not found');
-            return;
-        }
-        if (!bankForm) {
-            console.error('Bank form not found');
-            return;
-        }
-        if (bankCards.length === 0) {
-            console.warn('No bank cards found. Please add banks first.');
-        }
-    } catch (error) {
-        console.error('Error initializing elements:', error);
-    }
-}
-
-// Function to sort bank cards by bank name
-function sortBankCardsByName() {
-    try {
-        if (!bankCards || bankCards.length === 0) return;
-        
-        // Convert NodeList to Array for sorting
-        const bankCardsArray = Array.from(bankCards);
-        
-        // Sort the array based on the data-bank attribute (bank name)
-        bankCardsArray.sort((a, b) => {
-            const bankNameA = a.dataset.bank.toUpperCase();
-            const bankNameB = b.dataset.bank.toUpperCase();
-            return bankNameA.localeCompare(bankNameB);
-        });
-        
-        // Get the container of the bank cards
-        const container = bankCardsArray[0].parentNode;
-        
-        // Append the sorted cards to the container
-        bankCardsArray.forEach(card => container.appendChild(card));
-        
-        // Update the bankCards NodeList to reflect the new order
-        bankCards = document.querySelectorAll('.bank-card');
-        console.log('Bank cards sorted alphabetically by name');
-    } catch (error) {
-        console.error('Error sorting bank cards:', error);
-    }
-}
-
-function setupEventListeners() {
-    try {
-        // Set up bank card click listeners
-        bankCards?.forEach(card => {
+    // Bank card selection
+    const bankCardsContainer = document.getElementById('bankCardsContainer');
+    const bankNameInput = document.getElementById('bankNameInput');
+    const bankForm = document.getElementById('bankForm');
+    
+    // Add click event to bank cards
+    if (bankCardsContainer) {
+        const bankCards = bankCardsContainer.querySelectorAll('.bank-card');
+        bankCards.forEach(card => {
             card.addEventListener('click', function() {
-                bankCards.forEach(c => c.classList.remove('selected-bank'));
-                this.classList.add('selected-bank');
-                selectedBankInput.value = this.dataset.bank;
+                // Remove selected class from all cards
+                bankCards.forEach(c => c.classList.remove('selected'));
+                // Add selected class to clicked card
+                this.classList.add('selected');
+                // Set bank name in hidden input
+                const bankName = this.dataset.bank;
+                if (bankNameInput) {
+                    bankNameInput.value = bankName;
+                }
             });
         });
-
-        // Set up form submit listener
-        bankForm?.addEventListener('submit', handleFormSubmit);
-
-        // Add ripple animation to submit button on click (same as hawala page)
-        const submitBtn = document.querySelector('#bankForm button[type="submit"]');
-        if (submitBtn) {
-            submitBtn.addEventListener('click', function(e) {
-                // Remove any existing ripple
-                const oldRipple = this.querySelector('.ripple-effect');
-                if (oldRipple) oldRipple.remove();
-                // Create ripple
-                const ripple = document.createElement('span');
-                ripple.className = 'ripple-effect';
-                ripple.style.position = 'absolute';
-                ripple.style.left = `${e.offsetX}px`;
-                ripple.style.top = `${e.offsetY}px`;
-                ripple.style.width = ripple.style.height = Math.max(this.offsetWidth, this.offsetHeight) + 'px';
-                ripple.style.background = 'rgba(255,255,255,0.5)';
-                ripple.style.borderRadius = '50%';
-                ripple.style.transform = 'translate(-50%, -50%) scale(0)';
-                ripple.style.opacity = '0.75';
-                ripple.style.pointerEvents = 'none';
-                ripple.style.transition = 'transform 0.6s cubic-bezier(0.4,0,0.2,1), opacity 0.6s';
-                ripple.classList.add('ripple-animate');
-                this.appendChild(ripple);
-                setTimeout(() => {
-                    ripple.style.transform = 'translate(-50%, -50%) scale(2.5)';
-                    ripple.style.opacity = '0';
-                }, 10);
-                setTimeout(() => ripple.remove(), 650);
-            });
-        }
-    } catch (error) {
-        console.error('Error setting up event listeners:', error);
     }
-}
 
-async function handleFormSubmit(e) {
-    e.preventDefault();
+    // Form submission
+    if (bankForm) {
+        bankForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Validate form
+            if (!validateBankForm()) {
+                return;
+            }
 
-    try {
-        const formData = new FormData(this);
-        const data = Object.fromEntries(formData.entries());
-        
-        // If tax field is empty, set it to 0
-        if (!data.tax || data.tax.trim() === '') {
-            data.tax = '0';
+            // Get form data
+            const formData = new FormData(bankForm);
+            const data = {
+                bankName: formData.get('bankName'),
+                accountName: formData.get('accountName'),
+                nusinga: formData.get('nusinga'),
+                transactionType: formData.get('transactionType'),
+                currency: formData.get('currency'),
+                amount: formData.get('amount'),
+                description: formData.get('description')
+            };
+
+            // Send data to server
+            submitBankTransaction(data);
+        });
+    }
+
+    // Form validation
+    function validateBankForm() {
+        const bankName = bankNameInput.value;
+        const accountName = document.getElementById('accountNameSelect').value;
+        const amount = document.getElementById('amountInput').value;
+
+        if (!bankName) {
+            alert('Please select a bank');
+            return false;
         }
-        
-        const response = await fetch('/bank/save', {
+
+        if (!accountName) {
+            alert('Please select an account');
+            return false;
+        }
+
+        if (!amount || isNaN(amount) || parseFloat(amount) <= 0) {
+            alert('Please enter a valid amount');
+            return false;
+        }
+
+        return true;
+    }
+
+    // Submit bank transaction
+    function submitBankTransaction(data) {
+        fetch('/bank/process', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify(data)
-        });
-
-        if (!response.ok) {
-            const contentType = response.headers.get('content-type');
-            if (contentType && contentType.includes('application/json')) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to process transfer');
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                showSuccessModal(data);
             } else {
-                throw new Error('Server returned ' + response.status + ' ' + response.statusText);
+                alert(data.message || 'Transaction failed');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while processing the transaction');
+        });
+    }
+
+    // Show success modal
+    function showSuccessModal(data) {
+        const successModal = document.getElementById('successModal');
+        if (successModal) {
+            const successMessage = document.getElementById('successMessage');
+            const modalAmount = document.getElementById('modalAmount');
+            const modalBankName = document.getElementById('modalBankName');
+            const modalAccountName = document.getElementById('modalAccountName');
+            const modalType = document.getElementById('modalType');
+            const modalDescription = document.getElementById('modalDescription');
+            
+            if (successMessage) successMessage.textContent = data.message || 'Transaction processed successfully!';
+            
+            const transaction = data.transaction;
+            if (transaction) {
+                if (modalAmount) {
+                    modalAmount.textContent = transaction.currency === 'IQD' 
+                        ? `IQD ${parseFloat(transaction.amount).toLocaleString()}`
+                        : `$${parseFloat(transaction.amount).toLocaleString()}`;
+                }
+                if (modalBankName) modalBankName.textContent = transaction.bankName;
+                if (modalAccountName) modalAccountName.textContent = transaction.accountName;
+                if (modalType) modalType.textContent = transaction.transactionType === 'receive' ? 'Receive' : 'Send';
+                if (modalDescription) modalDescription.textContent = transaction.description || '-';
+            }
+            
+            const bsModal = new bootstrap.Modal(successModal);
+            bsModal.show();
+            
+            // Reset form after successful transaction
+            bankForm.reset();
+            // Remove selected class from all cards
+            const bankCards = bankCardsContainer.querySelectorAll('.bank-card');
+            bankCards.forEach(c => c.classList.remove('selected'));
+        }
+    }
+    
+    // Handle edit transaction
+    const editModal = document.getElementById('editModal');
+    if (editModal) {
+        editModal.addEventListener('show.bs.modal', function(event) {
+            const button = event.relatedTarget;
+            const transactionData = button ? JSON.parse(button.getAttribute('data-transaction')) : null;
+            
+            if (transactionData) {
+                document.getElementById('editTransactionId').value = transactionData.id;
+                document.getElementById('editAmount').value = transactionData.amount;
+                document.getElementById('editCurrency').value = transactionData.currency || 'USD';
+                document.getElementById('editBankName').value = transactionData.bankName;
+                document.getElementById('editAccountName').value = transactionData.accountName;
+                document.getElementById('editNusinga').value = transactionData.nusinga || '';
+                document.getElementById('editTransactionType').value = transactionData.transactionType;
+                document.getElementById('editDescription').value = transactionData.description || '';
+                document.getElementById('editTax').value = transactionData.tax || '0';
+            }
+        });
+        
+        // Handle edit form submission
+        document.getElementById('confirmEdit').addEventListener('click', function() {
+            const form = document.getElementById('editTransactionForm');
+            const formData = new FormData(form);
+            const data = {
+                id: formData.get('id'),
+                amount: formData.get('amount'),
+                currency: formData.get('currency'),
+                bankName: formData.get('bankName'),
+                accountName: formData.get('accountName'),
+                nusinga: formData.get('nusinga'),
+                transactionType: formData.get('transactionType'),
+                description: formData.get('description'),
+                tax: formData.get('tax')
+            };
+            
+            fetch('/transaction/bank/update', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    bootstrap.Modal.getInstance(editModal).hide();
+                    
+                    // Show success message and reload page
+                    alert('Transaction updated successfully');
+                    window.location.reload();
+                } else {
+                    alert(data.message || 'Failed to update transaction');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while updating the transaction');
+            });
+        });
+    }
+    
+    // Delete transaction
+    const deleteModal = document.getElementById('deleteModal');
+    if (deleteModal) {
+        let transactionIdToDelete = null;
+        
+        window.confirmDelete = function(event, transactionId) {
+            event.stopPropagation();
+            transactionIdToDelete = transactionId;
+            const bsModal = new bootstrap.Modal(deleteModal);
+            bsModal.show();
+        };
+        
+        document.getElementById('confirmDelete').addEventListener('click', function() {
+            if (transactionIdToDelete) {
+                fetch(`/transaction/bank/delete/${transactionIdToDelete}`, {
+                    method: 'POST'
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        bootstrap.Modal.getInstance(deleteModal).hide();
+                        
+                        // Show success message and reload page
+                        alert('Transaction deleted successfully');
+                        window.location.reload();
+                    } else {
+                        alert(data.message || 'Failed to delete transaction');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while deleting the transaction');
+                });
+            }
+        });
+    }
+    
+    // Function to show edit modal - available globally
+    window.showEditModal = function(event, transactionJSON) {
+        event.stopPropagation();
+        const transaction = typeof transactionJSON === 'string' 
+            ? JSON.parse(transactionJSON.replace(/&quot;/g, '"')) 
+            : transactionJSON;
+            
+        const modal = document.getElementById('editModal');
+        const bsModal = new bootstrap.Modal(modal);
+        
+        document.getElementById('editTransactionId').value = transaction.id;
+        document.getElementById('editAmount').value = transaction.amount;
+        document.getElementById('editCurrency').value = transaction.currency || 'USD';
+        document.getElementById('editBankName').value = transaction.bankName;
+        document.getElementById('editAccountName').value = transaction.accountName;
+        document.getElementById('editNusinga').value = transaction.nusinga || '';
+        document.getElementById('editTransactionType').value = transaction.transactionType;
+        document.getElementById('editDescription').value = transaction.description || '';
+        document.getElementById('editTax').value = transaction.tax || '0';
+        
+        bsModal.show();
+    };
+    
+    // Transaction row click handler
+    window.goToTransactionDetails = function(url) {
+        window.location.href = url;
+    };
+    
+    // Transaction row highlighting
+    window.toggleHighlight = function(checkbox, transactionId) {
+        const row = document.querySelector(`tr[data-transaction-id="${transactionId}"]`);
+        if (row) {
+            if (checkbox.checked) {
+                row.classList.add('highlighted');
+            } else {
+                row.classList.remove('highlighted');
             }
         }
-
-        const result = await response.json();
+    };
+    
+    window.toggleRowHighlight = function(transactionId) {
+        const row = document.querySelector(`tr[data-transaction-id="${transactionId}"]`);
+        const checkbox = row.querySelector('input[type="checkbox"]');
         
-        // Update success modal content
-        document.getElementById('successMessage').textContent = 'Bank transfer processed successfully!';
-        
-        // Format the amount and include tax information if tax was entered
-        let amountDisplay = `${data.currency} ${parseFloat(data.amount).toLocaleString()}`;
-        if (parseFloat(data.tax) > 0) {
-            amountDisplay += ` (Tax: ${data.currency} ${parseFloat(data.tax).toLocaleString()})`;
+        if (row) {
+            row.classList.toggle('highlighted');
+            if (checkbox) {
+                checkbox.checked = row.classList.contains('highlighted');
+            }
         }
-        
-        document.getElementById('modalAmount').textContent = amountDisplay;
-        document.getElementById('modalBankName').textContent = data.bankName;
-        document.getElementById('modalAccountName').textContent = data.accountName;
-        document.getElementById('modalType').textContent = data.transactionType;
-        document.getElementById('modalDescription').textContent = data.description || '-';
-        
-        // Show success modal
-        const successModal = new bootstrap.Modal(document.getElementById('successModal'));
-        successModal.show();
-        
-        // Add event listener to refresh the page when modal is hidden
-        document.getElementById('successModal').addEventListener('hidden.bs.modal', function() {
-            window.location.reload();
-        });
-        
-        // Reset form and selection
-        this.reset();
-        bankCards?.forEach(c => c.classList.remove('selected-bank'));
-        
-    } catch (error) {
-        console.error('Error:', error);
-        alert(error.message || 'Error connecting to server. Please try again. If the problem persists, refresh the page.');
-    }
-}
+    };
+});
