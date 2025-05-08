@@ -7,17 +7,26 @@
     {
       "src": "/css/(.*)",
       "dest": "/public/css/$1",
-      "headers": { "cache-control": "public, max-age=31536000, immutable" }
+      "headers": { 
+        "cache-control": "public, max-age=31536000, immutable",
+        "Access-Control-Allow-Credentials": "true"
+      }
     },
     {
       "src": "/js/(.*)",
       "dest": "/public/js/$1",
-      "headers": { "cache-control": "public, max-age=31536000, immutable" }
+      "headers": { 
+        "cache-control": "public, max-age=31536000, immutable",
+        "Access-Control-Allow-Credentials": "true"
+      }
     },
     {
       "src": "/images/(.*)",
       "dest": "/public/images/$1",
-      "headers": { "cache-control": "public, max-age=31536000, immutable" }
+      "headers": { 
+        "cache-control": "public, max-age=31536000, immutable",
+        "Access-Control-Allow-Credentials": "true"
+      }
     },
     {
       "src": "/(.*)",
@@ -27,7 +36,8 @@
         "strict-transport-security": "max-age=31536000; includeSubDomains",
         "x-frame-options": "DENY",
         "x-xss-protection": "1; mode=block",
-        "x-content-type-options": "nosniff"
+        "x-content-type-options": "nosniff",
+        "Access-Control-Allow-Credentials": "true"
       }
     }
   ],

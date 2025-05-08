@@ -13,23 +13,31 @@ const auth = require('./middleware/auth');
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// Updated Session configuration for Vercel's serverless environment
+// Enhanced Session configuration for Vercel's serverless environment
 app.use(session({
     secret: 'payroll-secret-key',
-    resave: false,
+    resave: true, // Changed to true for better compatibility with Vercel
     saveUninitialized: true,
     cookie: {
-        // Only use secure cookies in production
-        secure: process.env.NODE_ENV === 'production' && process.env.VERCEL_URL ? true : false,
-        // Ensure cookies work in Vercel's serverless environment
+        // Only use secure cookies if in production AND using HTTPS
+        secure: process.env.NODE_ENV === 'production' ? false : false,
+        // Standard cookie settings
         httpOnly: true,
         // Session expires after 2 hours of inactivity
         maxAge: 2 * 60 * 60 * 1000,
-        // Important for Vercel deployment
-        sameSite: 'lax'
+        // Using 'none' instead of 'lax' for broader compatibility
+        sameSite: 'none'
     }
 }));
 app.use(flash());
+
+// Debugging middleware for session tracking
+app.use((req, res, next) => {
+    const sessionInfo = req.session ? 'Session exists' : 'No session';
+    const userInfo = req.session && req.session.user ? `User ID: ${req.session.user.id}` : 'No user';
+    console.log(`Request path: ${req.path}, ${sessionInfo}, ${userInfo}`);
+    next();
+});
 
 // Make flash messages available to all views
 app.use((req, res, next) => {
@@ -83,6 +91,7 @@ app.use((req, res, next) => {
     
     // Check if user is authenticated
     if (!req.session || !req.session.user) {
+        console.log('Not authenticated, redirecting to login');
         // Save the requested URL for redirect after login
         req.session.returnTo = req.originalUrl;
         // Redirect to login page
@@ -90,6 +99,7 @@ app.use((req, res, next) => {
     }
     
     // User is authenticated, proceed to next middleware
+    console.log(`Authenticated as ${req.session.user.email}, proceeding to ${req.path}`);
     next();
 });
 
@@ -97,8 +107,9 @@ app.use((req, res, next) => {
 app.get('/login', (req, res) => {
     // If already logged in, redirect to first permitted page
     if (req.session && req.session.user) {
-        // Redirect to the appropriate page based on permissions
-        return res.redirect(auth.getDefaultPageForUser(req.session.user));
+        const redirectPath = auth.getDefaultPageForUser(req.session.user);
+        console.log(`User already logged in, redirecting to: ${redirectPath}`);
+        return res.redirect(redirectPath);
     }
     
     res.render('login', {
@@ -108,38 +119,53 @@ app.get('/login', (req, res) => {
     });
 });
 
-// Login POST handler - Updated for Firebase Authentication
+// Login POST handler - Updated for Firebase Authentication with improved error handling
 app.post('/login', async (req, res) => {
+    console.log('Login attempt received');
+    
     const { email, password } = req.body;
     
     // Validate request
     if (!email || !password) {
+        console.log('Missing email or password');
         req.flash('error', 'Email and password are required');
         return res.redirect('/login');
     }
     
     try {
+        console.log(`Attempting login for: ${email}`);
         // Authenticate user with Firebase
         const user = await auth.authenticateUser(email, password);
         
         if (!user) {
+            console.log('Authentication failed - invalid credentials');
             req.flash('error', 'Invalid email or password');
             return res.redirect('/login');
         }
         
+        console.log(`User authenticated successfully: ${user.id}`);
+        
         // Save user in session
         req.session.user = user;
         
-        // Ensure session is saved before redirect
-        req.session.save(() => {
+        // Force session save and handle redirect
+        req.session.save((err) => {
+            if (err) {
+                console.error('Session save error:', err);
+                req.flash('error', 'Login failed due to session error');
+                return res.redirect('/login');
+            }
+            
             // Redirect to original URL or appropriate page based on permissions
             const returnTo = req.session.returnTo || auth.getDefaultPageForUser(user);
             delete req.session.returnTo;
-            res.redirect(returnTo);
+            
+            console.log(`Login successful, redirecting to: ${returnTo}`);
+            return res.redirect(returnTo);
         });
     } catch (error) {
         console.error("Login error:", error);
-        req.flash('error', 'Login failed. Please try again.');
+        req.flash('error', `Login failed: ${error.message || 'Unknown error'}`);
         return res.redirect('/login');
     }
 });
@@ -147,24 +173,33 @@ app.post('/login', async (req, res) => {
 // Logout route - Updated for Firebase
 app.get('/logout', async (req, res) => {
     try {
+        console.log('Logout requested');
         // Logout from Firebase
         await auth.logoutUser();
         
         // Destroy session
-        req.session.destroy(() => {
+        req.session.destroy((err) => {
+            if (err) {
+                console.error('Session destruction error:', err);
+            }
+            console.log('User logged out successfully');
             res.redirect('/login');
         });
     } catch (error) {
         console.error("Logout error:", error);
-        res.redirect('/');
+        res.redirect('/login');
     }
 });
 
 // Root route redirects to login or appropriate page based on permissions
 app.get('/', (req, res) => {
     if (req.session && req.session.user) {
-        return res.redirect(auth.getDefaultPageForUser(req.session.user));
+        const redirectPath = auth.getDefaultPageForUser(req.session.user);
+        console.log(`Root path with authenticated user, redirecting to: ${redirectPath}`);
+        return res.redirect(redirectPath);
     }
+    
+    console.log('Root path with no auth, redirecting to login');
     return res.redirect('/login');
 });
 
@@ -184,6 +219,7 @@ app.use('/', adminRoutes);
 
 // Error handler for 404 Not Found
 app.use((req, res, next) => {
+    console.log(`404 Not Found: ${req.path}`);
     res.status(404).send('Page not found');
 });
 
