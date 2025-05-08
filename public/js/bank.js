@@ -6,8 +6,16 @@ let bankForm;
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize elements
     initializeElements();
+    // Sort bank cards alphabetically by bank name
+    sortBankCardsByName();
     // Set up event listeners
     setupEventListeners();
+
+    // Ensure the table applies the deep blue theme dynamically if needed
+    const table = document.querySelector('table');
+    if (table) {
+        table.classList.add('deep-blue-table');
+    }
 });
 
 function initializeElements() {
@@ -29,6 +37,35 @@ function initializeElements() {
         }
     } catch (error) {
         console.error('Error initializing elements:', error);
+    }
+}
+
+// Function to sort bank cards by bank name
+function sortBankCardsByName() {
+    try {
+        if (!bankCards || bankCards.length === 0) return;
+        
+        // Convert NodeList to Array for sorting
+        const bankCardsArray = Array.from(bankCards);
+        
+        // Sort the array based on the data-bank attribute (bank name)
+        bankCardsArray.sort((a, b) => {
+            const bankNameA = a.dataset.bank.toUpperCase();
+            const bankNameB = b.dataset.bank.toUpperCase();
+            return bankNameA.localeCompare(bankNameB);
+        });
+        
+        // Get the container of the bank cards
+        const container = bankCardsArray[0].parentNode;
+        
+        // Append the sorted cards to the container
+        bankCardsArray.forEach(card => container.appendChild(card));
+        
+        // Update the bankCards NodeList to reflect the new order
+        bankCards = document.querySelectorAll('.bank-card');
+        console.log('Bank cards sorted alphabetically by name');
+    } catch (error) {
+        console.error('Error sorting bank cards:', error);
     }
 }
 
@@ -130,6 +167,11 @@ async function handleFormSubmit(e) {
         // Show success modal
         const successModal = new bootstrap.Modal(document.getElementById('successModal'));
         successModal.show();
+        
+        // Add event listener to refresh the page when modal is hidden
+        document.getElementById('successModal').addEventListener('hidden.bs.modal', function() {
+            window.location.reload();
+        });
         
         // Reset form and selection
         this.reset();

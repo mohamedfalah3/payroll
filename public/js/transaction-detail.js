@@ -275,134 +275,41 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Handle delete confirmation
-    document.getElementById('confirmDelete')?.addEventListener('click', async function() {
-        if (!transactionToDelete) return;
+    document.getElementById('confirmDelete')?.addEventListener('click', function() {
+        // Get the transaction type from window data
+        const transactionType = window.transactionData?.type || 'bank';
+        
+        // Show processing state
         this.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Deleting...';
         this.disabled = true;
+        
+        // Close the modal immediately
         const modal = bootstrap.Modal.getInstance(document.getElementById('deleteModal'));
         if (modal) modal.hide();
-
-        const transactionType = window.transactionData?.type || 'bank';
-        let url = `/${transactionType}/delete/${transactionToDelete}`;
-        try {
-            const response = await fetch(url, { method: 'DELETE' });
-            if (response.ok) {
-                const returnDate = new URLSearchParams(window.location.search).get('returnDate');
-                window.location.href = `/${transactionType}-history${returnDate ? `?date=${returnDate}` : ''}`;
-            } else {
-                throw new Error('Delete failed');
-            }
-        } catch (error) {
-            alert('Error deleting transaction. Please try again.');
-            this.innerHTML = '<i class="bi bi-trash me-1"></i>Delete';
-            this.disabled = false;
-        }
-    });
-
-    // Handle edit form submission
-    document.getElementById('confirmEdit')?.addEventListener('click', async function() {
-        const form = document.getElementById('editTransactionForm');
-        if (!form.checkValidity()) {
-            form.reportValidity();
-            return;
-        }
-        this.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Saving...';
-        this.disabled = true;
-        const modal = bootstrap.Modal.getInstance(document.getElementById('editModal'));
-        if (modal) modal.hide();
-
-        const formData = new FormData(form);
-        const data = Object.fromEntries(formData.entries());
-        const transactionType = data.type || window.transactionData?.type || 'bank';
-        let url, method;
-        if (transactionType === 'bank') {
-            url = `/bank/update/${data.id}`;
-            method = 'PUT';
-        } else {
-            url = `/hawala/update/${data.id}`;
-            method = 'PUT';
-        }
-        try {
-            const response = await fetch(url, {
-                method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-            if (response.ok) {
-                window.location.reload();
-            } else {
-                throw new Error('Update failed');
-            }
-        } catch (error) {
-            alert('Error editing transaction. Please try again.');
-            this.innerHTML = '<i class="bi bi-check2 me-1"></i>Save Changes';
-            this.disabled = false;
-        }
-    });
-
-    // Handle delete confirmation
-    document.getElementById('confirmDelete')?.addEventListener('click', async function() {
-        if (!transactionToDelete) return;
         
-        try {
-            // Show processing state
-            this.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Deleting...';
-            this.disabled = true;
-            
-            // Close the modal immediately to improve perceived performance
-            const modal = bootstrap.Modal.getInstance(document.getElementById('deleteModal'));
-            if (modal) modal.hide();
-            
-            // Get the transaction type from the window.transactionData
-            const transactionType = window.transactionData?.type || 'bank';
-            
-            // Direct delete approach - faster and more reliable
-            if (window.FirebaseClient) {
-                // Most likely collection names based on transaction type
-                const mainCollections = [
-                    `${transactionType}Transactions`,
-                    `${transactionType}transactions`
-                ];
-                
-                // Try to delete from main collections first (most likely places)
-                for (const collectionName of mainCollections) {
-                    try {
-                        await window.FirebaseClient.deleteDocument(collectionName, transactionToDelete);
-                        console.log(`Document deleted from ${collectionName}`);
-                        // If successful, immediately redirect
-                        const returnDate = new URLSearchParams(window.location.search).get('returnDate');
-                        window.location.href = `/${transactionType}-history${returnDate ? `?date=${returnDate}` : ''}`;
-                        return;
-                    } catch (err) {
-                        console.log(`Couldn't delete from ${collectionName}, trying next option`);
-                    }
+        // Use standard form submission for simplicity and reliability
+        if (document.getElementById('deleteForm')) {
+            document.getElementById('deleteForm').submit();
+        } else {
+            // Fallback to API approach if form doesn't exist
+            fetch(`/${transactionType}/delete/${transactionToDelete}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(response => {
+                if (response.ok) {
+                    window.location.href = `/${transactionType}?tab=history`;
+                } else {
+                    throw new Error('Delete request failed');
                 }
-                
-                // If we're still here, try the server-side API route
-                console.log("Firebase direct delete unsuccessful, trying API route");
-            }
-            
-            // Fall back to API route (works with or without Firebase)
-            const response = await fetch(`/${transactionType}/delete/${transactionToDelete}`, {
-                method: 'POST'
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error deleting transaction. Please try again.');
+                // Reset button state
+                this.innerHTML = '<i class="bi bi-trash me-1"></i>Delete';
+                this.disabled = false;
             });
-            
-            if (response.ok) {
-                console.log("Deleted via API route");
-                const returnDate = new URLSearchParams(window.location.search).get('returnDate');
-                window.location.href = `/${transactionType}-history${returnDate ? `?date=${returnDate}` : ''}`;
-                return;
-            }
-            
-            throw new Error('All delete attempts failed');
-            
-        } catch (error) {
-            console.error('Error deleting transaction:', error);
-            alert('Error deleting transaction. Please try again.');
-            
-            // Reset button state
-            this.innerHTML = '<i class="bi bi-trash me-1"></i>Delete';
-            this.disabled = false;
         }
     });
 
@@ -453,39 +360,17 @@ document.addEventListener('DOMContentLoaded', () => {
             
             console.log('Saving with transaction data:', mergedData);
 
-            // Using Firebase - Optimized Direct Approach
-            if (window.FirebaseClient) {
-                // Most likely collection names based on transaction type
-                const mainCollections = [
-                    `${mergedData.type}Transactions`,
-                    `${mergedData.type}transactions`
-                ];
-                
-                let edited = false;
-                
-                // Try the most likely collections first for better performance
-                for (const collectionName of mainCollections) {
-                    try {
-                        // Direct update without checking if document exists first (faster)
-                        await window.FirebaseClient.updateDocument(collectionName, mergedData.id, mergedData);
-                        console.log(`Document updated in ${collectionName}`);
-                        edited = true;
-                        
-                        // Update the page content immediately without full reload for better UX
-                        updateTransactionInUI(mergedData);
-                        return;
-                    } catch (err) {
-                        console.log(`Couldn't update in ${collectionName}, trying next option`);
-                    }
-                }
-                
-                // If direct approach didn't work, try server-side API
-                console.log("Firebase direct update unsuccessful, trying API route");
+            // Use correct endpoint and method for update
+            let updateUrl = '';
+            let updateMethod = 'PUT';
+            if (mergedData.type === 'bank') {
+                updateUrl = `/bank/update/${mergedData.id}`;
+            } else {
+                updateUrl = `/hawala/update/${mergedData.id}`;
             }
             
-            // Fall back to API route (works with or without Firebase)
-            const response = await fetch(`/${mergedData.type}/edit/${mergedData.id}`, {
-                method: 'POST',
+            const response = await fetch(updateUrl, {
+                method: updateMethod,
                 headers: {
                     'Content-Type': 'application/json',
                 },
@@ -493,13 +378,11 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             
             if (response.ok) {
-                console.log("Updated via API route");
-                // Reload the page to show changes
                 window.location.reload();
                 return;
             }
             
-            throw new Error('All update attempts failed');
+            throw new Error('Failed to update transaction');
             
         } catch (error) {
             console.error('Error editing transaction:', error);

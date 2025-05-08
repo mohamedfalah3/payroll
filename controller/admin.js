@@ -7,6 +7,7 @@ const AdminController = require('./adminController');
 const Bank = require('../model/bank');
 const Account = require('../model/account');
 const settings = require('../config/settings'); // Import app settings
+const auth = require('../middleware/auth'); // Import auth middleware
 
 // Add Firebase configuration to all responses
 router.use((req, res, next) => {
@@ -14,29 +15,69 @@ router.use((req, res, next) => {
     next();
 });
 
-router.get('/', (req, res) => {
-    res.redirect('/hawala');
+// Add a test route to verify authentication
+router.get('/test-auth', (req, res) => {
+    res.send(`Authentication test successful! User: ${req.session.user.username}, Role: ${req.session.user.role}`);
 });
+
+// Remove the default redirect since this is now handled in app.js
+// router.get('/', (req, res) => {
+//     res.redirect('/hawala');
+// });
 
 // Hawala routes
 router.get('/hawala', async (req, res) => {
     try {
-        const [markets, accounts] = await Promise.all([
+        // Get all required data in parallel: markets, accounts, and transactions
+        const [markets, accounts, transactions] = await Promise.all([
             Market.getMarkets(),
-            Account.getAllAccounts()
+            Account.getAllAccounts(),
+            HawalaTransaction.getHawalaTransactions()
         ]);
         
+        const safeTransactions = transactions || [];
+        
+        // Calculate totals with null safety
+        const totalReceived = safeTransactions
+            .filter(t => t?.transactionType === 'receive')
+            .reduce((sum, t) => sum + parseFloat(t?.amount || 0), 0);
+            
+        const totalSent = safeTransactions
+            .filter(t => t?.transactionType === 'send')
+            .reduce((sum, t) => sum + parseFloat(t?.amount || 0), 0);
+        
+        // Calculate current page from query params (with safety)
+        const currentPage = parseInt(req.query?.page) || 1;
+        const rowsPerPage = 10;
+        const totalPages = Math.ceil(safeTransactions.length / rowsPerPage);
+        
+        // Include tab parameter from query string if present
+        const activeTab = req.query?.tab === 'history' ? 'history' : 'transfer';
+        
+        // Get current date from query if present
+        const currentDate = req.query?.date || null;
+        
         res.render('hawala', {
-            title: 'Hawala Transfer',
+            title: 'Hawala Management',
             markets: markets || [],
-            accounts: accounts || []
+            accounts: accounts || [],
+            transactions: safeTransactions,
+            totalReceived,
+            totalSent,
+            currentPage,
+            totalPages,
+            rowsPerPage,
+            activeTab,
+            currentDate,
+            error: null // Always provide error
         });
     } catch (error) {
         console.error('Error fetching markets:', error);
         res.render('hawala', {
-            title: 'Hawala Transfer',
+            title: 'Hawala Management',
             markets: [],
             accounts: [],
+            transactions: [],
             error: error.message || 'Error loading data'
         });
     }
@@ -44,22 +85,42 @@ router.get('/hawala', async (req, res) => {
 
 router.get('/bank', async (req, res) => {
     try {
-        const [banks, accounts] = await Promise.all([
+        // Get all required data in parallel: banks, accounts, and transactions
+        const [banks, accounts, transactions] = await Promise.all([
             Bank.getAllBanks(),
-            Account.getAllAccounts()
+            Account.getAllAccounts(),
+            BankTransaction.getBankTransactions()
         ]);
         
+        // Calculate current page from query params (with safety)
+        const currentPage = parseInt(req.query?.page) || 1;
+        const rowsPerPage = 10;
+        const totalPages = Math.ceil((transactions?.length || 0) / rowsPerPage);
+        
+        // Include tab parameter from query string if present
+        const activeTab = req.query?.tab === 'history' ? 'history' : 'transfer';
+        
+        // Get current date from query if present
+        const currentDate = req.query?.date || null;
+        
         res.render('bank', {
-            title: 'Bank Transfer',
+            title: 'Bank Management',
             banks: banks || [],
-            accounts: accounts || []
+            accounts: accounts || [],
+            transactions: transactions || [],
+            currentPage,
+            totalPages,
+            rowsPerPage,
+            activeTab,
+            currentDate
         });
     } catch (error) {
-        console.error('Error fetching banks:', error);
+        console.error('Error fetching bank data:', error);
         res.render('bank', {
-            title: 'Bank Transfer',
+            title: 'Bank Management',
             banks: [],
             accounts: [],
+            transactions: [],
             error: error.message || 'Error loading data'
         });
     }
@@ -347,6 +408,72 @@ router.delete('/hawala/delete/:id', async (req, res) => {
     }
 });
 
+// Add POST routes for transaction deletion (for compatibility)
+router.post('/bank/delete/:id', async (req, res) => {
+    try {
+        if (!req.params?.id) {
+            return res.status(400).json({ error: 'Transaction ID is required' });
+        }
+        
+        const result = await BankTransaction.deleteTransaction(req.params.id);
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error deleting bank transaction:', error);
+        res.status(500).json({ error: error.message || 'Error deleting bank transaction' });
+    }
+});
+
+router.post('/hawala/delete/:id', async (req, res) => {
+    try {
+        if (!req.params?.id) {
+            return res.status(400).json({ error: 'Transaction ID is required' });
+        }
+        
+        const result = await HawalaTransaction.deleteTransaction(req.params.id);
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error deleting hawala transaction:', error);
+        res.status(500).json({ error: error.message || 'Error deleting hawala transaction' });
+    }
+});
+
+// Add direct form-based transaction deletion routes
+router.post('/bank/delete-transaction/:id', async (req, res) => {
+    try {
+        const transactionId = req.params.id;
+        
+        if (!transactionId) {
+            return res.status(400).send('Transaction ID is required');
+        }
+        
+        await BankTransaction.deleteTransaction(transactionId);
+        
+        // Redirect to bank management with history tab active
+        res.redirect('/bank?tab=history');
+    } catch (error) {
+        console.error('Error deleting bank transaction:', error);
+        res.status(500).send('Error deleting transaction: ' + (error.message || 'Unknown error'));
+    }
+});
+
+router.post('/hawala/delete-transaction/:id', async (req, res) => {
+    try {
+        const transactionId = req.params.id;
+        
+        if (!transactionId) {
+            return res.status(400).send('Transaction ID is required');
+        }
+        
+        await HawalaTransaction.deleteTransaction(transactionId);
+        
+        // Redirect to hawala management with history tab active
+        res.redirect('/hawala?tab=history');
+    } catch (error) {
+        console.error('Error deleting hawala transaction:', error);
+        res.status(500).send('Error deleting transaction: ' + (error.message || 'Unknown error'));
+    }
+});
+
 // Transaction details route
 router.get('/transaction/:type/:id', async (req, res) => {
     try {
@@ -408,32 +535,39 @@ router.get('/add-market', async (req, res) => {
         res.render('add-market', { 
             markets: markets || [],
             error: req.query?.error || null,
-            title: 'Add Market'
+            success: req.query?.success || null,
+            title: 'Add Market',
+            user: req.session.user // Explicitly include user data
         });
     } catch (error) {
         console.error('Error loading add market page:', error);
         res.render('add-market', { 
             markets: [],
             error: error.message || 'Error loading markets',
-            title: 'Add Market'
+            success: null,
+            title: 'Add Market',
+            user: req.session.user // Explicitly include user data
         });
     }
 });
 
 router.post('/add-market', async (req, res) => {
     try {
-        const { marketName } = req.body || {};
+        const { name } = req.body || {};
         
-        if (!marketName) {
+        if (!name) {
             return res.render('add-market', {
                 markets: await Market.getMarkets(),
                 error: 'Market name is required',
+                success: null,
                 title: 'Add Market'
             });
         }
         
-        const result = await Market.addMarket(marketName);
-        res.redirect('/add-market');
+        const result = await Market.addMarket(name);
+        
+        // Redirect with success message
+        return res.redirect('/add-market?success=' + encodeURIComponent('Market added successfully'));
     } catch (error) {
         console.error('Error adding market:', error);
         const markets = await Market.getMarkets() || [];
@@ -441,6 +575,7 @@ router.post('/add-market', async (req, res) => {
         res.render('add-market', { 
             markets,
             error: error.message || 'Error adding market',
+            success: null,
             title: 'Add Market'
         });
     }
@@ -479,7 +614,9 @@ router.get('/add-bank', async (req, res) => {
         res.render('add-bank', { 
             banks: banks || [],
             error: req.query?.error || null,
-            title: 'Add Bank'
+            success: req.query?.success || null,
+            title: 'Add Bank',
+            user: req.session.user // Explicitly include user data
         });
     } catch (error) {
         console.error('Error loading add bank page:', error);
@@ -487,7 +624,9 @@ router.get('/add-bank', async (req, res) => {
         res.render('add-bank', { 
             banks: [],
             error: error.message || 'Error loading banks',
-            title: 'Add Bank'
+            success: null,
+            title: 'Add Bank',
+            user: req.session.user // Explicitly include user data
         });
     }
 });
@@ -500,6 +639,7 @@ router.post('/add-bank', async (req, res) => {
             return res.render('add-bank', {
                 banks: await Bank.getAllBanks() || [],
                 error: 'Bank name is required',
+                success: null,
                 title: 'Add Bank'
             });
         }
@@ -511,11 +651,13 @@ router.post('/add-bank', async (req, res) => {
             return res.render('add-bank', { 
                 banks,
                 error: result?.message || 'Failed to add bank',
+                success: null,
                 title: 'Add Bank'
             });
         }
         
-        res.redirect('/add-bank');
+        // Redirect with success message
+        return res.redirect('/add-bank?success=' + encodeURIComponent('Bank added successfully'));
     } catch (error) {
         console.error('Error adding bank:', error);
         const banks = await Bank.getAllBanks() || [];
@@ -523,6 +665,7 @@ router.post('/add-bank', async (req, res) => {
         res.render('add-bank', { 
             banks,
             error: error.message || 'Error adding bank',
+            success: null,
             title: 'Add Bank'
         });
     }
@@ -547,7 +690,9 @@ router.get('/add-account', async (req, res) => {
         res.render('add-account', { 
             accounts: accounts || [],
             error: req.query?.error || null,
-            title: 'Add Account'
+            success: req.query?.success || null,
+            title: 'Add Account',
+            user: req.session.user // Explicitly include user data
         });
     } catch (error) {
         console.error('Error loading add account page:', error);
@@ -555,7 +700,9 @@ router.get('/add-account', async (req, res) => {
         res.render('add-account', { 
             accounts: [],
             error: error.message || 'Error loading accounts',
-            title: 'Add Account'
+            success: null,
+            title: 'Add Account',
+            user: req.session.user // Explicitly include user data
         });
     }
 });
@@ -568,6 +715,7 @@ router.post('/add-account', async (req, res) => {
             return res.render('add-account', {
                 accounts: await Account.getAllAccounts() || [],
                 error: 'Account name is required',
+                success: null,
                 title: 'Add Account'
             });
         }
@@ -580,11 +728,13 @@ router.post('/add-account', async (req, res) => {
             return res.render('add-account', { 
                 accounts,
                 error: result?.message || 'Failed to add account',
+                success: null,
                 title: 'Add Account'
             });
         }
         
-        res.redirect('/add-account');
+        // Redirect with success message
+        return res.redirect('/add-account?success=' + encodeURIComponent('Account added successfully'));
     } catch (error) {
         console.error('Error adding account:', error);
         const accounts = await Account.getAllAccounts() || [];
@@ -592,6 +742,7 @@ router.post('/add-account', async (req, res) => {
         res.render('add-account', { 
             accounts,
             error: error.message || 'Error adding account',
+            success: null,
             title: 'Add Account'
         });
     }
@@ -717,6 +868,20 @@ router.delete('/add-account/:id', async (req, res) => {
             success: false, 
             message: error.message || 'Failed to delete account'
         });
+    }
+});
+
+// Add dashboard route to use the existing dashboard.ejs template
+router.get('/dashboard', async (req, res) => {
+    try {
+        // Render the dashboard view with user data
+        res.render('dashboard', {
+            title: 'Dashboard',
+            user: req.session.user
+        });
+    } catch (error) {
+        console.error('Error loading dashboard:', error);
+        res.status(500).send('Error loading dashboard');
     }
 });
 

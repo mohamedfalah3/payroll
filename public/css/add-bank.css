@@ -1,7 +1,7 @@
 :root {
-    --primary-color: #2563eb;
-    --secondary-color: #1e40af;
-    --accent-color: #4f46e5;
+    --primary-color: #0d9488; /* Teal 600 */
+    --secondary-color: #115e59; /* Teal 800 */
+    --accent-color: #14b8a6; /* Teal 500 */
     --background-color: #f3f4f6;
     --text-color: #1e293b;
     --danger-color: #e11d48;
@@ -192,24 +192,20 @@ body {
 
 .bank-list-item {
     padding: 1.25rem;
-    border-bottom: 1px solid #e2e8f0;
+    border-bottom: none;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    transition: all 0.3s var(--transition-function);
     animation: fadeIn 0.5s ease both;
     animation-delay: calc(var(--item-index, 0) * 0.1s + 0.3s);
-    border-left: 0px solid var(--primary-color);
+    background-color: white;
+    margin-bottom: 1rem;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
 .bank-list-item:last-child {
-    border-bottom: none;
-}
-
-.bank-list-item:hover {
-    background-color: rgba(37, 99, 235, 0.05);
-    transform: translateX(5px);
-    border-left: 4px solid var(--primary-color);
+    margin-bottom: 0;
 }
 
 .bank-info {

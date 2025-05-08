@@ -4,6 +4,8 @@ let currentPage = 1;
 let allRows = [];
 let filteredRows = [];
 let availableDates = [];
+let currentSortField = 'bank'; // Default sort field (bank name)
+let currentSortDirection = 'asc'; // Default sort direction
 
 document.addEventListener('DOMContentLoaded', () => {
     const dateFilter = document.getElementById('dateFilter');
@@ -15,7 +17,8 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Extract unique dates from transactions and ensure midnight UTC
     availableDates = [...new Set(allRows.map(row => {
-        const date = new Date(row.querySelector('td[data-full-date]').getAttribute('data-full-date'));
+        const dateCell = row.querySelector('td[data-full-date]');
+        const date = new Date(dateCell.getAttribute('data-full-date'));
         return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())).toISOString().split('T')[0];
     }))].sort().reverse(); // Sort dates in descending order
     
@@ -52,31 +55,169 @@ document.addEventListener('DOMContentLoaded', () => {
         updateURL();
     });
 
+    // Add click handlers for sortable column headers
+    setupSortableHeaders();
+
     // Initial load
     initializeDatePagination();
     applyFilters();
     updateFormReturnUrls();
 });
 
+// Setup click handlers for sortable column headers
+function setupSortableHeaders() {
+    // Find table headers
+    const tableHeaders = document.querySelectorAll('#historyTab .table thead th');
+    
+    // Add sorting indicators and click handlers to sortable columns
+    tableHeaders.forEach((header, index) => {
+        // Make ONLY Bank header (index 1) sortable
+        if (index === 1) {
+            // Create a sortable header with indicator
+            const headerText = header.textContent.trim();
+            const fieldName = 'bank';
+            
+            header.innerHTML = `
+                <div class="sortable-header" data-field="${fieldName}">
+                    ${headerText}
+                    <span class="sort-indicator ms-1">
+                        <i class="bi bi-arrow-down-up"></i>
+                    </span>
+                </div>
+            `;
+            
+            // Add click handler
+            header.style.cursor = 'pointer';
+            header.addEventListener('click', () => {
+                sortTransactions(fieldName);
+            });
+        }
+    });
+}
+
+// Sort transactions by the selected field
+function sortTransactions(field) {
+    // Toggle direction if already sorting by this field
+    if (currentSortField === field) {
+        currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+        currentSortField = field;
+        currentSortDirection = 'asc';
+    }
+    
+    // Update sort indicators
+    updateSortIndicators();
+    
+    // Sort the filtered rows
+    if (filteredRows.length > 0) {
+        filteredRows.sort((a, b) => {
+            let valueA, valueB;
+            
+            if (field === 'bank') {
+                valueA = a.cells[1].textContent.trim().toLowerCase();
+                valueB = b.cells[1].textContent.trim().toLowerCase();
+            } else if (field === 'account') {
+                valueA = a.cells[2].textContent.trim().toLowerCase();
+                valueB = b.cells[2].textContent.trim().toLowerCase();
+            } else if (field === 'amount') {
+                // Extract numeric amount from cells
+                valueA = extractNumericAmount(a.cells[4]);
+                valueB = extractNumericAmount(b.cells[4]);
+            } else {
+                return 0;
+            }
+            
+            // Apply sort direction
+            const direction = currentSortDirection === 'asc' ? 1 : -1;
+            
+            if (valueA < valueB) return -1 * direction;
+            if (valueA > valueB) return 1 * direction;
+            return 0;
+        });
+        
+        // Reorder rows in DOM
+        const tbody = document.querySelector('#historyTab tbody');
+        filteredRows.forEach(row => {
+            tbody.appendChild(row);
+        });
+    }
+}
+
+// Extract numeric amount from cell (handles different currency formats)
+function extractNumericAmount(cell) {
+    // Get text content or value from span if present
+    const content = cell.querySelector('span') ? 
+        cell.querySelector('span').textContent.trim() : 
+        cell.textContent.trim();
+        
+    // Remove currency symbols and commas, then parse as float
+    return parseFloat(content.replace(/[^\d.-]/g, '')) || 0;
+}
+
+// Update sort indicators in table headers
+function updateSortIndicators() {
+    const headers = document.querySelectorAll('.sortable-header');
+    
+    headers.forEach(header => {
+        const field = header.getAttribute('data-field');
+        const indicator = header.querySelector('.sort-indicator');
+        
+        if (field === currentSortField) {
+            indicator.innerHTML = currentSortDirection === 'asc' ? 
+                '<i class="bi bi-sort-alpha-down"></i>' : 
+                '<i class="bi bi-sort-alpha-up"></i>';
+        } else {
+            indicator.innerHTML = '<i class="bi bi-arrow-down-up"></i>';
+        }
+    });
+}
+
 function updateFormReturnUrls() {
     document.querySelectorAll('form[action^="/toggle-bank-status/"] input[name="returnUrl"]').forEach(input => {
         const bankFilter = document.getElementById('bankFilter');
         const params = new URLSearchParams();
+        
+        // Check if we're on the combined page
+        const isOnCombinedPage = window.location.pathname === '/bank';
+        
+        // Set appropriate parameters
+        if (isOnCombinedPage) {
+            params.set('tab', 'history');
+        }
+        
         params.set('date', currentDate);
         if (bankFilter.value) {
             params.set('bank', bankFilter.value);
         }
-        input.value = `/bank-history?${params.toString()}`;
+        
+        // Set the return URL based on whether we're on the combined page or standalone page
+        input.value = isOnCombinedPage ? 
+            `/bank?${params.toString()}` : 
+            `/bank-history?${params.toString()}`;
     });
 }
 
 function updateURL() {
     const bankFilter = document.getElementById('bankFilter');
-    const params = new URLSearchParams();
+    const params = new URLSearchParams(window.location.search);
+    
+    // Keep the tab parameter if we're on the combined page
+    const isOnCombinedPage = window.location.pathname === '/bank';
+    const currentTab = params.get('tab');
+    
+    // Update date and bank parameters
     params.set('date', currentDate);
     if (bankFilter.value) {
         params.set('bank', bankFilter.value);
+    } else {
+        params.delete('bank');
     }
+    
+    // If we're on the combined page, ensure the tab parameter is set to 'history'
+    if (isOnCombinedPage) {
+        params.set('tab', 'history');
+    }
+    
     const newUrl = `${window.location.pathname}?${params.toString()}`;
     window.history.pushState({ date: currentDate }, '', newUrl);
     updateFormReturnUrls();
@@ -184,13 +325,25 @@ function applyFilters() {
 function updateSummary() {
     let totalReceivedUSD = 0;
     let totalReceivedIQD = 0;
-    let totalReceivedEUR = 0;
     let receiveCount = 0;
 
     // Process the filtered rows to get transaction data
     filteredRows.forEach(row => {
         if (!row.classList.contains('no-transactions')) {
-            const type = row.querySelector('.badge').textContent.trim().toLowerCase();
+            // Only count transactions where the row is both checked and highlighted
+            const checkbox = row.querySelector('.form-check-input');
+            const isHighlighted = row.classList.contains('highlighted');
+            
+            // Skip this row if it's not both checked and highlighted
+            if (!checkbox || !checkbox.checked || !isHighlighted) {
+                return;
+            }
+            
+            // Get transaction type from the amount cell's data attribute
+            const amountCell = row.querySelector('td[data-transaction-type]');
+            if (!amountCell) return;
+            
+            const type = amountCell.getAttribute('data-transaction-type').toLowerCase();
             
             if (type === 'receive') {
                 // Get the edit button to extract original data
@@ -213,8 +366,6 @@ function updateSummary() {
                             // Add to the correct currency total
                             if (currency === 'IQD') {
                                 totalReceivedIQD += netAmount;
-                            } else if (currency === 'EUR') {
-                                totalReceivedEUR += netAmount;
                             } else {
                                 totalReceivedUSD += netAmount;
                             }
@@ -232,7 +383,6 @@ function updateSummary() {
     // Update amounts in summary box (showing after-tax amounts)
     document.querySelector('.amount.amount-iqd').textContent = `IQD: ${totalReceivedIQD.toLocaleString()}`;
     document.querySelector('.amount.amount-usd').textContent = `$${totalReceivedUSD.toFixed(2)}`;
-    document.querySelector('.amount.amount-euro').textContent = `€${totalReceivedEUR.toFixed(2)}`;
     
     const formattedDate = new Date(currentDate).toLocaleDateString('en-US', {
         weekday: 'short',
@@ -420,34 +570,8 @@ document.getElementById('confirmEdit')?.addEventListener('click', async function
         });
 
         if (response.ok) {
-            const result = await response.json();
-            
-            // Update the row in the table
-            const row = document.querySelector(`tr[onclick*="${data.id}"]`);
-            if (row) {
-                const cells = row.getElementsByTagName('td');
-                cells[1].textContent = result.bankName; // Bank Name
-                cells[2].textContent = result.accountName; // Account Name
-                
-                // Format the amount according to the currency
-                let formattedAmount;
-                if (result.currency === 'IQD') {
-                    formattedAmount = `IQD ${Number(result.amount).toLocaleString()}`;
-                } else if (result.currency === 'EUR') {
-                    formattedAmount = `€${Number(result.amount).toFixed(2)}`;
-                } else {
-                    formattedAmount = `$${Number(result.amount).toFixed(2)}`;
-                }
-                cells[3].innerHTML = formattedAmount; // Amount
-                
-                cells[5].textContent = result.description || '-'; // Description
-            }
-            
-            // Update summary totals
-            applyFilters();
-            
-            // Close the modal
-            bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
+            // Reload the page to reflect changes after editing
+            window.location.reload();
         } else {
             const errorData = await response.json();
             throw new Error(errorData.error || 'Failed to update transaction');
@@ -517,8 +641,6 @@ function generateReportData() {
                     // Format the after-tax amount according to currency without "After Tax" label
                     if (currency === 'IQD') {
                         afterTaxAmount = `IQD ${netAmount.toLocaleString()}`;
-                    } else if (currency === 'EUR') {
-                        afterTaxAmount = `€${netAmount.toFixed(2)}`;
                     } else {
                         afterTaxAmount = `$${netAmount.toFixed(2)}`;
                     }
@@ -548,21 +670,185 @@ function generateReportData() {
 }
 
 function printReport() {
-    const reportView = document.getElementById('reportView');
-    
-    if (generateReportData()) {
-        reportView.style.display = 'block';
-        window.print();
-        reportView.style.display = 'none';
-    } else {
-        alert('No transactions found for the selected date.');
+    try {
+        // Create a new window for printing
+        const printWindow = window.open('', '_blank', 'width=800,height=600');
+        
+        if (!printWindow) {
+            alert("Please allow popup windows for printing.");
+            return;
+        }
+        
+        // Get only the highlighted rows that are checked
+        let rowsHTML = '';
+        if (filteredRows.length > 0) {
+            // Filter to only get rows that are highlighted and checked
+            const highlightedRows = filteredRows.filter(row => 
+                !row.classList.contains('no-transactions') && 
+                row.classList.contains('highlighted') && 
+                row.querySelector('.form-check-input')?.checked
+            );
+            
+            if (highlightedRows.length > 0) {
+                highlightedRows.forEach(row => {
+                    // Extract bank name
+                    const bankName = row.cells[1].textContent.trim();
+                    
+                    // Extract account name
+                    const accountName = row.cells[2].textContent.trim();
+                    
+                    // Get the amount
+                    const amountText = row.cells[3].textContent.trim();
+                    
+                    // Extract date
+                    const dateCell = row.querySelector('td[data-full-date]');
+                    const dateStr = new Date(dateCell.getAttribute('data-full-date')).toLocaleDateString('en-US', {
+                        weekday: 'short', 
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric'
+                    });
+                    
+                    rowsHTML += `
+                        <tr>
+                            <td>${bankName}</td>
+                            <td>${accountName}</td>
+                            <td>${amountText}</td>
+                            <td>${dateStr}</td>
+                        </tr>
+                    `;
+                });
+            } else {
+                rowsHTML = `<tr><td colspan="4" class="text-center">No highlighted transactions found</td></tr>`;
+            }
+        } else {
+            rowsHTML = `<tr><td colspan="4" class="text-center">No highlighted transactions found</td></tr>`;
+        }
+        
+        // Format date for the report
+        const formattedDate = new Date().toLocaleDateString('en-US', {
+            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+        });
+        
+        // Build the complete HTML for the print window
+        const printContent = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Bank Transaction Report</title>
+                <style>
+                    body {
+                        font-family: Arial, sans-serif;
+                        margin: 20px;
+                    }
+                    h2 {
+                        text-align: center;
+                        margin-bottom: 10px;
+                    }
+                    p.date {
+                        text-align: center;
+                        margin-bottom: 20px;
+                    }
+                    table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin-bottom: 20px;
+                    }
+                    th, td {
+                        border: 1px solid #000;
+                        padding: 8px;
+                        text-align: left;
+                    }
+                    th {
+                        background-color: #f2f2f2;
+                    }
+                    .text-center {
+                        text-align: center;
+                    }
+                </style>
+            </head>
+            <body>
+                <h2>Daily Transaction Report</h2>
+                <p class="date">Date: ${formattedDate}</p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 20%;">Bank Name</th>
+                            <th style="width: 20%;">Account Name</th>
+                            <th>Amount</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rowsHTML}
+                    </tbody>
+                </table>
+            </body>
+            </html>
+        `;
+        
+        // Write to the new window and print
+        printWindow.document.open();
+        printWindow.document.write(printContent);
+        printWindow.document.close();
+        
+        // Wait for content to load before printing
+        printWindow.onload = function() {
+            setTimeout(function() {
+                printWindow.print();
+                printWindow.close();
+            }, 250);
+        };
+    } catch (error) {
+        console.error('Error preparing print report:', error);
+        alert('Error preparing report for printing. Please try again.');
     }
 }
 
 function exportToPDF() {
     const reportView = document.getElementById('reportView');
+    const reportTableBody = document.getElementById('reportTableBody');
     
-    if (generateReportData()) {
+    // Clear previous content
+    reportTableBody.innerHTML = '';
+    
+    // Get only the highlighted rows that are checked
+    const highlightedRows = filteredRows.filter(row => 
+        !row.classList.contains('no-transactions') && 
+        row.classList.contains('highlighted') && 
+        row.querySelector('.form-check-input')?.checked
+    );
+    
+    if (highlightedRows.length > 0) {
+        // Add highlighted transactions to the report with after-tax amounts
+        highlightedRows.forEach(row => {
+            const tr = document.createElement('tr');
+            
+            // Bank Name
+            const bankName = row.cells[1].textContent.trim();
+            tr.insertCell().textContent = bankName;
+    
+            // Account Name
+            const accountName = row.cells[2].textContent.trim();
+            tr.insertCell().textContent = accountName;
+    
+            // Get the amount from the visible cell
+            const amountCell = row.cells[3].textContent.trim();
+            tr.insertCell().textContent = amountCell;
+    
+            // Date (month and day only)
+            const dateCell = row.querySelector('td[data-full-date]');
+            const date = new Date(dateCell.getAttribute('data-full-date'));
+            const dateStr = date.toLocaleDateString('en-US', {
+                month: 'long',
+                day: 'numeric'
+            });
+            tr.insertCell().textContent = dateStr;
+    
+            reportTableBody.appendChild(tr);
+        });
+        
+        // Display and export the report view
         reportView.style.display = 'block';
         
         const opt = {
@@ -572,11 +858,11 @@ function exportToPDF() {
             html2canvas: { scale: 2 },
             jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
         };
-
+    
         html2pdf().set(opt).from(reportView).save().then(() => {
             reportView.style.display = 'none';
         });
     } else {
-        alert('No transactions found for the selected date.');
+        alert('No highlighted transactions found. Please check at least one transaction to export.');
     }
 }

@@ -15,13 +15,15 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Extract unique dates from transactions and ensure midnight UTC
     availableDates = [...new Set(allRows.map(row => {
-        const date = new Date(row.querySelector('td[data-date]').getAttribute('data-date'));
+        const dateCell = row.querySelector('td[data-date]');
+        if (!dateCell) return null;
+        const date = new Date(dateCell.getAttribute('data-date'));
         return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())).toISOString().split('T')[0];
-    }))].sort().reverse(); // Sort dates in descending order
+    }))].filter(Boolean).sort().reverse(); // Sort dates in descending order
     
     // Set initial date and page from URL or use defaults
     const urlParams = new URLSearchParams(window.location.search);
-    currentDate = urlParams.get('date') || availableDates[0];
+    currentDate = urlParams.get('date') || availableDates[0] || new Date().toISOString().split('T')[0];
     currentPage = parseInt(urlParams.get('page')) || 1;
     
     // Set market filter from URL if present
@@ -31,57 +33,86 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Initialize flatpickr date picker with proper configuration
-    const fp = flatpickr(dateFilter, {
-        dateFormat: "Y-m-d",
-        enableTime: false,
-        maxDate: "today",
-        defaultDate: currentDate,
-        onChange: function(selectedDates) {
-            if (selectedDates.length > 0) {
-                // Convert to UTC midnight to match our stored dates
-                const selectedDate = new Date(Date.UTC(
-                    selectedDates[0].getFullYear(),
-                    selectedDates[0].getMonth(),
-                    selectedDates[0].getDate()
-                ));
-                currentDate = selectedDate.toISOString().split('T')[0];
-                applyFilters();
-                updateURL();
-                initializeDatePagination();
+    if (dateFilter) {
+        const fp = flatpickr(dateFilter, {
+            dateFormat: "Y-m-d",
+            enableTime: false,
+            maxDate: "today",
+            defaultDate: currentDate,
+            onChange: function(selectedDates) {
+                if (selectedDates.length > 0) {
+                    // Convert to UTC midnight to match our stored dates
+                    const selectedDate = new Date(Date.UTC(
+                        selectedDates[0].getFullYear(),
+                        selectedDates[0].getMonth(),
+                        selectedDates[0].getDate()
+                    ));
+                    currentDate = selectedDate.toISOString().split('T')[0];
+                    applyFilters();
+                    updateURL();
+                    initializeDatePagination();
+                }
             }
-        }
-    });
+        });
+    }
 
     // Market filter event listener
-    marketFilter.addEventListener('change', () => {
-        applyFilters();
-    });
+    if (marketFilter) {
+        marketFilter.addEventListener('change', () => {
+            applyFilters();
+            updateURL();
+        });
+    }
 
     // Initial load
     initializeDatePagination();
     applyFilters();
     updateFormReturnUrls();
+
+    // Set initial summary values based on currently displayed transactions
+    updateSummary();
 });
 
 function updateFormReturnUrls() {
     document.querySelectorAll('form[action^="/toggle-hawala-status/"] input[name="returnUrl"]').forEach(input => {
-        const marketFilter = document.getElementById('marketFilter');
-        const params = new URLSearchParams();
+        // Set appropriate parameters
+        if (isOnCombinedPage) {
+            params.set('tab', 'history');
+        }
+        
         params.set('date', currentDate);
         if (marketFilter.value) {
             params.set('market', marketFilter.value);
         }
-        input.value = `/hawala-history?${params.toString()}`;
+        
+        // Set the return URL based on whether we're on the combined page or standalone page
+        input.value = isOnCombinedPage ? 
+            `/hawala?${params.toString()}` : 
+            `/hawala-history?${params.toString()}`;
     });
 }
 
 function updateURL() {
     const marketFilter = document.getElementById('marketFilter');
-    const params = new URLSearchParams();
+    const params = new URLSearchParams(window.location.search);
+    
+    // Keep the tab parameter if we're on the combined page
+    const isOnCombinedPage = window.location.pathname === '/hawala';
+    const currentTab = params.get('tab');
+    
+    // Update date and market parameters
     params.set('date', currentDate);
     if (marketFilter.value) {
         params.set('market', marketFilter.value);
+    } else {
+        params.delete('market');
     }
+    
+    // If we're on the combined page, ensure the tab parameter is set to 'history'
+    if (isOnCombinedPage) {
+        params.set('tab', 'history');
+    }
+    
     const newUrl = `${window.location.pathname}?${params.toString()}`;
     window.history.pushState({ date: currentDate }, '', newUrl);
     updateFormReturnUrls();
@@ -121,37 +152,6 @@ function initializeDatePagination() {
         day: 'numeric'
     });
     currentLi.innerHTML = `<span class="page-link">${formattedDate}</span>`;
-    pagination.appendChild(currentLi);
-
-    // Next date button
-    const nextLi = document.createElement('li');
-    nextLi.className = `page-item${currentDateIndex === 0 ? ' disabled' : ''}`;
-    nextLi.innerHTML = '<a class="page-link" href="#" aria-label="Next"><i class="bi bi-chevron-right"></i></a>';
-    
-    if (currentDateIndex > 0) {
-        nextLi.onclick = (e) => {
-            e.preventDefault();
-            currentDate = availableDates[currentDateIndex - 1];
-            dateFilter._flatpickr.setDate(currentDate, true);
-            applyFilters();
-            updateURL();
-            initializeDatePagination();
-        };
-    }
-    pagination.appendChild(nextLi);
-}
-
-function applyFilters() {
-    const marketFilter = document.getElementById('marketFilter');
-    const selectedMarket = marketFilter.value;
-
-    // First filter by selected date, ensuring we only compare the date part
-    filteredRows = allRows.filter(row => {
-        const dateCell = row.querySelector('td[data-date]');
-        const rowDate = new Date(dateCell.getAttribute('data-date'));
-        const rowDateStr = rowDate.toISOString().split('T')[0];
-        const filterDateStr = currentDate;
-        return rowDateStr === filterDateStr;
     });
 
     // Then apply market filter if selected
@@ -532,21 +532,42 @@ function generateReportData() {
     });
     reportDate.textContent = formattedDate;
 
+    console.log('Generating report data for date:', currentDate);
+    console.log('Found filtered rows:', filteredRows.length);
+
     // Filter transactions for the current date
     const currentDateTransactions = filteredRows.filter(row => {
+        // Skip rows that are "no transactions" placeholders
+        if (row.classList.contains('no-transactions')) return false;
+        
+        // Get the date from the cell with data-date attribute
         const dateCell = row.querySelector('td[data-date]');
+        if (!dateCell) {
+            console.log('Row missing data-date attribute:', row);
+            return false;
+        }
+        
+        // Parse the date and convert to ISO string for comparison
         const rowDate = new Date(dateCell.getAttribute('data-date'));
-        const rowDateStr = rowDate.toISOString().split('T')[0];
-        const filterDateStr = currentDate;
-        return rowDateStr === filterDateStr && !row.classList.contains('no-transactions');
+        const rowDateStr = new Date(Date.UTC(
+            rowDate.getFullYear(),
+            rowDate.getMonth(), 
+            rowDate.getDate()
+        )).toISOString().split('T')[0];
+        
+        // Compare with current date and make sure it's not a placeholder row
+        return rowDateStr === currentDate && !row.classList.contains('no-transactions');
     });
+
+    console.log('Found transactions for current date:', currentDateTransactions.length);
 
     // Add filtered transactions to the report in the specified order
     currentDateTransactions.forEach(row => {
         const tr = document.createElement('tr');
         
         // 1. Market Name
-        const marketName = row.querySelector('td[data-market]').getAttribute('data-market');
+        const marketCell = row.querySelector('td[data-market]');
+        const marketName = marketCell ? marketCell.getAttribute('data-market') : row.cells[1].textContent.trim();
         tr.insertCell().textContent = marketName;
 
         // 2. Account Name
@@ -556,7 +577,7 @@ function generateReportData() {
         // 3. Amount (red if sent, black if received)
         const amountCell = row.querySelector('td:nth-child(4)').textContent.trim();
         const typeCell = row.querySelector('.badge');
-        const type = typeCell.textContent.trim().toLowerCase();
+        const type = typeCell ? typeCell.textContent.trim().toLowerCase() : '';
         const amountElement = tr.insertCell();
 
         // Set the amount text
@@ -583,11 +604,15 @@ function generateReportData() {
 }
 
 function printReport() {
+    console.log('Print report called, current date:', currentDate);
+    
     if (generateReportData()) {
         const reportView = document.getElementById('reportView');
         reportView.style.display = 'block';
         window.print();
-        reportView.style.display = 'none';
+        setTimeout(() => {
+            reportView.style.display = 'none';
+        }, 500);
     } else {
         alert('No transactions found for the selected date.');
     }

@@ -1,18 +1,16 @@
 :root {
-    --primary-color: #2563eb;
-    --secondary-color: #1e40af;
-    --background-color: #f8fafc;
+    --primary-color: #0d9488; /* Teal 600 */
+    --secondary-color: #115e59; /* Teal 800 */
+    --accent-color: #14b8a6; /* Teal 500 */
+    --background-color: #f3f4f6;
     --text-color: #1e293b;
-    --accent-color: #4f46e5;
+    --danger-color: #e11d48;
     --border-radius: 12px;
-    --box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+    --box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
     --success-color: #10b981;
     --error-color: #ef4444;
     --transition-speed: 0.3s;
     --transition-function: cubic-bezier(0.4, 0, 0.2, 1);
-    --card-bg: #ffffff;
-    --muted-color: #64748b;
-    --border-color: #e2e8f0;
 }
 
 @keyframes fadeIn {
@@ -634,6 +632,10 @@ h1 {
     background-color: rgba(37, 99, 235, 0.05);
 }
 
+.table tbody tr:nth-child(even) {
+    background-color: #e6f4f1;
+}
+
 tbody {
     min-height: 300px;
 }
@@ -1083,12 +1085,11 @@ td .d-flex {
     }
 
     .sidebar nav {
-        display: flex;
-        justify-content: center;
-        flex-wrap: wrap;
-        gap: 1.5rem 0; /* Only horizontal gap */
-        padding: 0.5rem;
-        width: 100%;
+        display: none; /* Hide by default */
+    }
+
+    .sidebar nav.show {
+        display: flex; /* Show when toggled */
     }
 
     .sidebar a {
@@ -1498,4 +1499,12 @@ td .d-flex {
 .filter-panel .input-group > .btn {
   margin-left: 0 !important;
   margin-right: 25px !important;
+}
+
+/* Only horizontal borders for bank history table */
+.table th, .table td {
+  border-top: none !important;
+  border-right: none !important;
+  border-left: none !important;
+  border-bottom: 1px solid rgba(0,0,0,0.1) !important;
 }
