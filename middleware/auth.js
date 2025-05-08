@@ -54,46 +54,13 @@ const isAuthenticated = (req, res, next) => {
     res.redirect('/login');
 };
 
-// Check if user has access to the specific route
-const hasAccess = (permission) => {
-    return (req, res, next) => {
-        // If not authenticated at all, redirect to login
-        if (!req.session || !req.session.user) {
-            req.session.returnTo = req.originalUrl;
-            return res.redirect('/login');
-        }
-        
-        // Get user permissions
-        const userPermissions = req.session.user.permissions || [];
-        
-        // Check if user has the required permission
-        if (userPermissions.includes(permission) || userPermissions.includes('admin')) {
-            return next();
-        }
-        
-        // If no access, show access denied page with appropriate return path
-        const returnTo = getDefaultPageForUser(req.session.user);
-        return res.render('access-denied', { 
-            title: 'Access Denied',
-            user: req.session.user,
-            returnTo: returnTo
-        });
-    };
-};
-
 // Helper function to determine default page for user based on permissions
-function getDefaultPageForUser(user) {
+const getDefaultPageForUser = (user) => {
     if (!user || !user.permissions || user.permissions.length === 0) {
         return '/login';
     }
     
-    // Special case for admin
-    if (user.permissions.includes('admin')) {
-        return '/bank'; // Send admins to bank page instead of dashboard
-    }
-    
     // Check for specific permissions and redirect to the appropriate page
-    // Try to find a matching permission and use its corresponding page
     if (user.permissions.includes('bank')) {
         return '/bank';
     } else if (user.permissions.includes('hawala')) {
@@ -108,7 +75,34 @@ function getDefaultPageForUser(user) {
     
     // Fallback to login if no recognized permissions
     return '/login';
-}
+};
+
+// Check if user has access to the specific route
+const hasAccess = (permission) => {
+    return (req, res, next) => {
+        // If not authenticated at all, redirect to login
+        if (!req.session || !req.session.user) {
+            req.session.returnTo = req.originalUrl;
+            return res.redirect('/login');
+        }
+        
+        // Get user permissions
+        const userPermissions = req.session.user.permissions || [];
+        
+        // Check if user has the required permission
+        if (userPermissions.includes(permission)) {
+            return next();
+        }
+        
+        // If no access, show access denied page with appropriate return path
+        const returnTo = getDefaultPageForUser(req.session.user);
+        return res.render('access-denied', { 
+            title: 'Access Denied',
+            user: req.session.user,
+            returnTo: returnTo
+        });
+    };
+};
 
 // Authenticate user function
 const authenticateUser = (username, password) => {
@@ -136,5 +130,6 @@ module.exports = {
     isAuthenticated,
     hasAccess,
     authenticateUser,
-    addUserToLocals
+    addUserToLocals,
+    getDefaultPageForUser  // Export this function so it can be used in app.js
 };

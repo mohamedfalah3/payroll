@@ -21,7 +21,14 @@
     },
     {
       "src": "/(.*)",
-      "dest": "/app.js"
+      "dest": "/app.js",
+      "headers": {
+        "X-Powered-By": "Express",
+        "strict-transport-security": "max-age=31536000; includeSubDomains",
+        "x-frame-options": "DENY",
+        "x-xss-protection": "1; mode=block",
+        "x-content-type-options": "nosniff"
+      }
     }
   ],
   "env": {

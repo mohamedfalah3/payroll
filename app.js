@@ -98,7 +98,7 @@ app.get('/login', (req, res) => {
     // If already logged in, redirect to first permitted page
     if (req.session && req.session.user) {
         // Redirect to the appropriate page based on permissions
-        return res.redirect(getDefaultPageForUser(req.session.user));
+        return res.redirect(auth.getDefaultPageForUser(req.session.user));
     }
     
     res.render('login', {
@@ -129,11 +129,13 @@ app.post('/login', (req, res) => {
     // Save user in session
     req.session.user = user;
     
-    // Redirect to original URL or appropriate page based on permissions
-    const returnTo = req.session.returnTo || getDefaultPageForUser(user);
-    delete req.session.returnTo;
-    
-    res.redirect(returnTo);
+    // Ensure session is saved before redirect
+    req.session.save(() => {
+        // Redirect to original URL or appropriate page based on permissions
+        const returnTo = req.session.returnTo || auth.getDefaultPageForUser(user);
+        delete req.session.returnTo;
+        res.redirect(returnTo);
+    });
 });
 
 // Logout route
@@ -146,33 +148,10 @@ app.get('/logout', (req, res) => {
 // Root route redirects to login or appropriate page based on permissions
 app.get('/', (req, res) => {
     if (req.session && req.session.user) {
-        return res.redirect(getDefaultPageForUser(req.session.user));
+        return res.redirect(auth.getDefaultPageForUser(req.session.user));
     }
     return res.redirect('/login');
 });
-
-// Helper function to determine default page for user based on permissions
-function getDefaultPageForUser(user) {
-    if (!user || !user.permissions || user.permissions.length === 0) {
-        return '/access-denied';
-    }
-    
-    // Check for specific permissions and redirect to the appropriate page
-    if (user.permissions.includes('bank')) {
-        return '/bank';
-    } else if (user.permissions.includes('hawala')) {
-        return '/hawala';
-    } else if (user.permissions.includes('add-market')) {
-        return '/add-market';
-    } else if (user.permissions.includes('add-bank')) {
-        return '/add-bank';
-    } else if (user.permissions.includes('add-account')) {
-        return '/add-account';
-    }
-    
-    // Fallback to access denied if no recognized permissions
-    return '/access-denied';
-}
 
 // PERMISSION-BASED ACCESS CONTROLS
 app.use('/bank', auth.hasAccess('bank'));
