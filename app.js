@@ -13,16 +13,20 @@ const auth = require('./middleware/auth');
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// Session configuration with enhanced security
+// Updated Session configuration for Vercel's serverless environment
 app.use(session({
     secret: 'payroll-secret-key',
     resave: false,
-    saveUninitialized: true, // Changed to true to ensure session is always created
+    saveUninitialized: true,
     cookie: {
-        // Secure cookie in production
-        secure: process.env.NODE_ENV === 'production',
+        // Only use secure cookies in production
+        secure: process.env.NODE_ENV === 'production' && process.env.VERCEL_URL ? true : false,
+        // Ensure cookies work in Vercel's serverless environment
+        httpOnly: true,
         // Session expires after 2 hours of inactivity
-        maxAge: 2 * 60 * 60 * 1000
+        maxAge: 2 * 60 * 60 * 1000,
+        // Important for Vercel deployment
+        sameSite: 'lax'
     }
 }));
 app.use(flash());

@@ -1,4 +1,5 @@
 // auth.js middleware for user authentication
+const crypto = require('crypto');
 
 // Define our hardcoded users with their permissions
 const users = [
