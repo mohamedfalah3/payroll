@@ -1157,3 +1157,124 @@ textarea.form-control {
         gap: 0.75rem;
     }
 }
+
+/* Mobile responsive fixes for bank.css */
+@media (max-width: 768px) {
+    .sidebar {
+        width: 100%;
+        height: auto;
+        position: static;
+    }
+
+    .main-content {
+        margin-left: 0;
+        padding: 1rem;
+        width: 100%;
+    }
+
+    .bank-card {
+        min-height: 80px;
+        max-height: 150px;
+    }
+
+    /* Fix for bank cards container on mobile */
+    #bankCardsContainer {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+    }
+
+    /* Clear button fixes */
+    .bank-clear-btn {
+        margin-left: 10px !important;
+        width: auto !important;
+        height: auto !important;
+        padding: 0.4rem 0.8rem;
+    }
+
+    /* Improved form elements for touch */
+    .form-control, .form-select {
+        height: auto;
+        padding: 0.75rem;
+        font-size: 16px; /* Prevents zoom on iOS */
+    }
+
+    /* Adjust button sizing for better touch targets */
+    .btn-primary {
+        padding: 0.75rem 1.25rem;
+        font-size: 16px;
+    }
+}
+
+/* Fix for very small screens */
+@media (max-width: 576px) {
+    #bankCardsContainer {
+        grid-template-columns: 1fr;
+    }
+
+    .transfer-form {
+        padding: 1.25rem;
+    }
+
+    /* Make bank cards more visible on small screens */
+    .bank-card {
+        height: auto !important;
+        min-height: 60px;
+        margin-bottom: 0.5rem;
+    }
+}
+
+/* Fix for tables on mobile */
+@media (max-width: 768px) {
+    .table-responsive {
+        border: 0;
+    }
+
+    .table-responsive table {
+        width: 100%;
+    }
+
+    .table-responsive thead {
+        display: none;
+    }
+
+    .table-responsive tr {
+        margin-bottom: 1rem;
+        display: block;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        overflow: hidden;
+    }
+
+    .table-responsive td {
+        display: block;
+        text-align: right;
+        border-bottom: 1px solid #eee;
+        position: relative;
+        padding: 0.75rem 0.75rem 0.75rem 40%;
+    }
+
+    .table-responsive td:last-child {
+        border-bottom: 0;
+    }
+
+    .table-responsive td::before {
+        content: attr(data-label);
+        position: absolute;
+        left: 0.75rem;
+        width: 35%;
+        padding-right: 10px;
+        font-weight: bold;
+        text-align: left;
+        color: #495057;
+    }
+}
+
+/* Fix body scroll issues in mobile when modals are open */
+body.modal-open {
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+    height: 100%;
+}
