@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Payroll System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #10b981;
+            --primary-hover: #059669;
+            --primary-light: #ecfdf5;
+            --secondary: #064e3b;
+            --light: #f8fafc;
+            --dark: #1e293b;
+            --text-light: #f3f4f6;
+            --text-dark: #334155;
+            --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Poppins', sans-serif;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        /* Background shapes */
+        .bg-shape {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(70px);
+            z-index: -1;
+            opacity: 0.3;
+        }
+        
+        .bg-shape-1 {
+            width: 300px;
+            height: 300px;
+            background-color: rgba(16, 185, 129, 0.5);
+            top: -100px;
+            right: -50px;
+            animation: float 15s infinite ease-in-out;
+        }
+        
+        .bg-shape-2 {
+            width: 400px;
+            height: 400px;
+            background-color: rgba(16, 185, 129, 0.3);
+            bottom: -200px;
+            left: -100px;
+            animation: float 20s infinite ease-in-out reverse;
+        }
+        
+        .bg-shape-3 {
+            width: 200px;
+            height: 200px;
+            background-color: rgba(16, 185, 129, 0.4);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            animation: float 18s infinite ease-in-out 2s;
+        }
+        
+        @keyframes float {
+            0%, 100% {
+                transform: translate(0, 0);
+            }
+            25% {
+                transform: translate(15px, -15px);
+            }
+            50% {
+                transform: translate(0, 20px);
+            }
+            75% {
+                transform: translate(-15px, -10px);
+            }
+        }
+        
+        .login-container {
+            width: 1000px;
+            max-width: 100%;
+            min-height: 600px;
+            display: flex;
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: var(--shadow-lg);
+            animation: fadeIn 0.8s ease-out;
+            position: relative;
+            background-color: white;
+        }
+        
+        /* Loading animation */
+        .loader {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(16, 185, 129, 0.2);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            animation: spin 1s linear infinite;
+            opacity: 0;
+            visibility: hidden;
+            z-index: 999;
+            transition: all 0.3s ease;
+        }
+        
+        @keyframes spin {
+            to {
+                transform: translate(-50%, -50%) rotate(360deg);
+            }
+        }
+        
+        .submitting .loader {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .submitting form {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        
+        @keyframes fadeIn {
+            0% {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .login-sidebar {
+            background: linear-gradient(145deg, #047857 0%, #065f46 100%);
+            color: white;
+            padding: 60px;
+            width: 45%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            border-radius: 24px 0 0 24px;
+        }
+        
+        .login-sidebar::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 60 60'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M0 0h10v10H0zm10 10h10v10H10zm10 0h10v10H20zm10 10h10v10H30zm10 0h10v10H40zM0 20h10v10H0zm10 10h10v10H10zm10 0h10v10H20zm10 10h10v10H30zm10 0h10v10H40zM0 40h10v10H0zm10 10h10v10H10zm10 0h10v10H20z'/%3E%3C/g%3E%3C/svg%3E") center center;
+            opacity: 0.08;
+            z-index: 0;
+        }
+        
+        .login-sidebar::after {
+            content: "";
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            top: -50%;
+            left: -50%;
+            animation: pulse 15s infinite ease-in-out;
+            z-index: 1;
+            opacity: 0.5;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        .login-sidebar h2 {
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            position: relative;
+            z-index: 2;
+        }
+        
+        .login-sidebar p {
+            font-size: 16px;
+            line-height: 1.7;
+            margin-bottom: 30px;
+            opacity: 0.9;
+            position: relative;
+            z-index: 2;
+        }
+        
+        .highlight {
+            color: #34d399;
+            position: relative;
+            display: inline-block;
+        }
+        
+        .highlight::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            bottom: 5px;
+            height: 8px;
+            width: 100%;
+            background-color: rgba(52, 211, 153, 0.3);
+            z-index: -1;
+            border-radius: 4px;
+        }
+        
+        .feature-list {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            margin-top: 40px;
+            position: relative;
+            z-index: 2;
+        }
+        
+        .feature-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .feature-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+        
+        .feature-text {
+            font-weight: 500;
+            font-size: 16px;
+            display: flex;
+            flex-direction: column;
+            line-height: 1.4;
+        }
+        
+        .feature-text span {
+            font-size: 13px;
+            opacity: 0.8;
+            font-weight: 300;
+        }
+        
+        .login-content {
+            width: 55%;
+            padding: 50px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .login-heading {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 10px;
+        }
+        
+        .login-subheading {
+            font-size: 16px;
+            color: #64748b;
+            margin-bottom: 40px;
+        }
+        
+        .form-floating {
+            margin-bottom: 20px;
+        }
+        
+        .form-floating .form-control {
+            height: 60px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 15px 20px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            color: var(--dark);
+        }
+        
+        .form-floating .form-control:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 0.25rem rgba(16, 185, 129, 0.25);
+        }
+        
+        .form-floating label {
+            padding: 15px 20px;
+            color: #64748b;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-login {
+            height: 60px;
+            padding: 0 30px;
+            background-color: var(--primary);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-weight: 600;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            box-shadow: var(--shadow-sm);
+            margin-top: 20px;
+        }
+        
+        .btn-login:hover {
+            background-color: var(--primary-hover);
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+        
+        .btn-login:active {
+            transform: translateY(0);
+        }
+        
+        .auth-divider {
+            display: flex;
+            align-items: center;
+            margin: 30px 0;
+            color: #94a3b8;
+        }
+        
+        .auth-divider::before,
+        .auth-divider::after {
+            content: "";
+            flex: 1;
+            height: 1px;
+            background-color: #e2e8f0;
+        }
+        
+        .auth-divider span {
+            padding: 0 15px;
+            font-size: 14px;
+        }
+        
+        .alternative-auth {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .auth-btn {
+            flex: 1;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            background-color: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-weight: 600;
+            color: var(--dark);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .auth-btn:hover {
+            background-color: var(--light);
+            border-color: #cbd5e1;
+        }
+        
+        .auth-btn img {
+            width: 20px;
+            height: 20px;
+        }
+        
+        .error-alert {
+            background-color: #fee2e2;
+            color: #b91c1c;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .error-alert i {
+            font-size: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .login-container {
+                flex-direction: column;
+                max-height: none;
+            }
+            
+            .login-sidebar {
+                width: 100%;
+                padding: 30px;
+                border-radius: 24px 24px 0 0;
+            }
+            
+            .login-content {
+                width: 100%;
+                padding: 30px;
+            }
+            
+            .feature-list {
+                grid-template-columns: 1fr;
+            }
+            
+            .feature-text {
+                font-size: 16px;
+            }
+            
+            .login-heading {
+                font-size: 28px;
+            }
+            
+            .login-sidebar h2 {
+                font-size: 30px;
+            }
+            
+            .form-floating .form-control {
+                height: 56px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Background shapes -->
+    <div class="bg-shape bg-shape-1"></div>
+    <div class="bg-shape bg-shape-2"></div>
+    <div class="bg-shape bg-shape-3"></div>
+    
+    <div class="login-container">
+        <!-- Loading indicator -->
+        <div class="loader"></div>
+        
+        <div class="login-sidebar">
+            <h2>Financial Management <span class="highlight">System</span></h2>
+            <p>Securely manage your organization's financial transactions, track balances, and monitor payment flows with our comprehensive solution.</p>
+            
+            <div class="feature-list">
+                <div class="feature-item">
+                    <div class="feature-icon">
+                        <i class="bi bi-bank"></i>
+                    </div>
+                    <div class="feature-text">
+                        Bank Management
+                        <span>Manage all your bank transactions</span>
+                    </div>
+                </div>
+                
+                <div class="feature-item">
+                    <div class="feature-icon">
+                        <i class="bi bi-cash-stack"></i>
+                    </div>
+                    <div class="feature-text">
+                        Hawala Management
+                        <span>Track money transfer operations</span>
+                    </div>
+                </div>
+                
+                <div class="feature-item">
+                    <div class="feature-icon">
+                        <i class="bi bi-graph-up"></i>
+                    </div>
+                    <div class="feature-text">
+                        Detailed Reports
+                        <span>Comprehensive transaction analytics</span>
+                    </div>
+                </div>
+                
+                <div class="feature-item">
+                    <div class="feature-icon">
+                        <i class="bi bi-shield-check"></i>
+                    </div>
+                    <div class="feature-text">
+                        Secure Access
+                        <span>Role-based permissions system</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="login-content">
+            <h3 class="login-heading">Welcome Back</h3>
+            <p class="login-subheading">Please sign in to your account to continue</p>
+            
+            <% if (messages && messages.error && messages.error.length > 0) { %>
+                <div class="error-alert">
+                    <i class="bi bi-exclamation-circle"></i> 
+                    <%= messages.error[0] %>
+                </div>
+            <% } %>
+              <form id="firebase-login-form">
+                <div class="form-floating">
+                    <input type="email" class="form-control" id="email" name="email" placeholder="Email" required>
+                    <label for="email">Email</label>
+                </div>
+                
+                <div class="form-floating">
+                    <input type="password" class="form-control" id="password" name="password" placeholder="Password" required>
+                    <label for="password">Password</label>
+                </div>
+                
+                <button type="submit" class="btn btn-login" id="login-btn">
+                    <i class="bi bi-box-arrow-in-right me-2"></i> Sign In
+                </button>
+            </form>
+            
+            <div id="error-message" style="color: #ef4444; margin-top: 15px; display: none;">
+                <i class="bi bi-exclamation-triangle"></i> <span></span>
+            </div>
+              <div id="success-message" style="color: #10b981; margin-top: 15px; display: none;">
+                <i class="bi bi-check-circle"></i> <span></span>
+            </div>
+            
+            <% if (locals.debug) { %>
+            <div style="margin-top: 20px; padding: 15px; background-color: #f8fafc; border-radius: 8px; font-size: 12px; color: #64748b;">
+                <details>
+                    <summary>Debug Info</summary>
+                    <div style="margin-top: 10px;">
+                        <div>Timestamp: <%= debug.timestamp %></div>
+                        <div>Host: <%= debug.host %></div>
+                        <div>Origin: <%= debug.origin || 'None' %></div>
+                        <div>Secure: <%= debug.secure %></div>
+                        <div>Session Exists: <%= debug.sessionExists %></div>
+                        <div>Backend URL: <span id="backend-url"></span></div>
+                    </div>
+                </details>
+            </div>
+            <% } %>
+        </div>
+    </div>
+      <!-- Firebase SDK and Authentication -->
+    <script type="module">
+        // Import Firebase modules
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
+        
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyA8BfGknaD7K8cualdLXq7aBBVtWWbxlgo",
+            authDomain: "money-transfering.firebaseapp.com",
+            projectId: "money-transfering",
+            storageBucket: "money-transfering.firebasestorage.app",
+            messagingSenderId: "1090188586001",
+            appId: "1:1090188586001:web:a16689b5b9f7e73e2f95b0",
+            measurementId: "G-FKEDK8EEX4"
+        };
+        
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        
+        // Make Firebase config available globally
+        window.firebaseConfig = firebaseConfig;
+    </script>
+      <!-- Firebase Auth Login Handler -->
+    <script type="module" src="./js/firebase-auth-login.js"></script>
+    
+    <!-- Debug script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Display backend URL in debug section
+            const backendUrlElement = document.getElementById('backend-url');
+            if (backendUrlElement) {
+                backendUrlElement.textContent = window.location.origin;
+            }
+            
+            // Add diagnostic tests
+            fetch('./api/test')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('API test successful:', data);
+                })
+                .catch(error => {
+                    console.error('API test failed:', error);
+                });
+                
+            // Check auth status
+            fetch('./api/auth/status')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Auth status:', data);
+                })
+                .catch(error => {
+                    console.error('Auth status check failed:', error);
+                });
+        });
+    </script>
+</body>
+</html>

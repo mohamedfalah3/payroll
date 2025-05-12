@@ -1,0 +1,93 @@
+<!-- Sidebar Navigation with Permission Check -->
+<div class="col-md-2 sidebar">
+    <div class="d-flex justify-content-between align-items-center mb-2 p-2">
+        <h3 class="m-0">Navigation</h3>
+        <button class="toggler-btn d-none" type="button" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-list" style="font-size: 1.5rem; color: white;"></i>
+        </button>
+    </div>
+    <nav>
+        <% 
+        // Define all available navigation items with their permission requirements
+        const navItems = [
+            { path: '/bank', label: 'Bank Management', permission: 'bank' },
+            { path: '/hawala', label: 'Hawala Management', permission: 'hawala' },
+            { path: '/add-market', label: 'Add Market', permission: 'add-market' },
+            { path: '/add-bank', label: 'Add Bank', permission: 'add-bank' },
+            { path: '/add-account', label: 'Add Account', permission: 'add-account' }
+        ];
+        
+        // Get the current path from locals or use a default
+        const currentPath = locals.currentPath || '';
+        
+        // Only show navigation items for which the user has permission
+        for (const item of navItems) {
+            if (user && user.permissions && (user.permissions.includes(item.permission) || user.permissions.includes('admin'))) {
+                const isActive = currentPath === item.path ? 'active' : '';
+        %>
+            <a href="<%= item.path %>" class="<%= isActive %>"><%= item.label %></a>
+        <% 
+            }
+        } 
+        %>
+        
+        <% if (user) { %>
+            <!-- Logout link always shown for authenticated users -->
+            <div class="logout-section">
+                <hr class="nav-divider">
+                <a href="/logout" class="logout-link">
+                    <i class="bi bi-box-arrow-right"></i> Logout (<%= user.username %>)
+                </a>
+            </div>
+        <% } %>
+    </nav>
+</div>
+
+<style>
+    /* Hide toggler by default with d-none class */
+    .toggler-btn {
+        display: none !important; /* Ensure it's hidden by default */
+        padding: 0.3rem !important;
+        width: 48px !important;
+        height: 48px !important;
+        min-width: 48px !important;
+        min-height: 48px !important;
+        max-width: 48px !important;
+        max-height: 48px !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border-radius: 8px !important;
+        margin: 0 !important;
+        background-color: var(--primary-color, #0d9488);
+        border: none;
+    }
+    
+    /* Only show toggler on small screens */
+    @media (max-width: 1100px) {
+        .toggler-btn {
+            display: flex !important;
+        }
+    }
+    
+    /* Logout section styling */
+    .logout-section {
+        margin-top: 20px;
+    }
+    
+    .nav-divider {
+        border-top: 1px solid rgba(255, 255, 255, 0.2);
+        margin: 10px 0;
+    }
+    
+    .logout-link {
+        color: #e74c3c;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+    
+    .logout-link:hover {
+        color: #c0392b;
+        text-decoration: none;
+    }
+</style>

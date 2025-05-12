@@ -1,0 +1,32 @@
+{
+    "scripts":  {
+                    "start":  "node app.js",
+                    "dev":  "nodemon server.js",
+                    "deploy":  "node deploy.js",
+                    "deploy:full":  "powershell -ExecutionPolicy Bypass -File deploy-full.ps1",
+                    "setup":  "node setup.js",
+                    "setup:firebase-credentials":  "powershell -ExecutionPolicy Bypass -File setup-firebase-credentials.ps1",
+                    "prepare:firebase":  "node prepare-firebase.js",
+                    "prepare:vercel-env":  "node prepare-vercel-env.js",
+                    "prepare:service-account":  "node prepare-vercel-service-account.js",
+                    "validate:service-account":  "node validate-service-account.js",
+                    "fix:paths":  "node fix-relative-paths.js",
+                    "deploy:firebase":  "firebase deploy --only hosting",
+                    "migrate:data":  "node utils/migrateToFirebase.js",
+                    "migrate:users":  "node utils/migrateUsers.js",
+                    "check:firebase":  "node check-firebase-config.js"
+                },
+    "dependencies":  {
+                         "body-parser":  "^1.20.2",
+                         "connect-flash":  "^0.1.1",
+                         "ejs":  "^3.1.10",
+                         "express":  "^5.1.0",
+                         "express-session":  "^1.18.1",
+                         "firebase":  "^11.6.1",
+                         "firebase-admin":  "^13.3.0",
+                         "html2pdf.js":  "^0.10.3",
+                         "nodemon":  "^3.1.9",
+                         "path":  "^0.12.7",
+                         "uuid":  "^11.1.0"
+                     }
+}

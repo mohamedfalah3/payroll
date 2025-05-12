@@ -1,0 +1,12 @@
+.vercel
+node_modules/
+logs/
+.DS_Store
+.env
+.env.local
+.env.development
+
+# Firebase service account (contains sensitive credentials)
+firebase-service-account.json
+firebase-service-account-*.json
+firebase-service-account-for-vercel.txt
